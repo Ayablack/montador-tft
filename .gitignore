@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+dados/brutos/
+dados/*.db
+dados/overlay.json
+dados/overlay.tmp
+dados/icones/
+static/icones/
