@@ -1,24 +1,25 @@
-"""Atualiza o banco de dados.
+"""Atualiza o banco de dados (dados/tft.db).
 
-    python atualizar.py            baixa os dados de jogo do datatft (todos os sets)
+    python atualizar.py            dados do set (Community Dragon) e ícones
     python atualizar.py --meta     também baixa partidas de alto elo da Riot (precisa da chave)
 """
 
 import sys
+from pathlib import Path
 
-from dados import banco, cdragon, coleta, riot
+from dados import banco, cdragon, riot
+
+BANCO_ANTIGO = Path(__file__).parent / "dados" / "datatft.db"  # versão anterior do app
 
 
 def atualizar_dados_de_jogo(progresso=print):
     conexao = banco.conectar()
-    arquivos = coleta.descobrir_arquivos()
-    for (idioma, numero_set), url in sorted(arquivos.items()):
-        progresso(f"Baixando set {numero_set} ({idioma})...")
-        dados = coleta.baixar_set(url, idioma, numero_set)
-        banco.importar_set(conexao, dados, idioma, numero_set)
-    cdragon.importar(conexao, progresso=progresso)  # nomes em pt-BR e ícones, para ler a tela
+    cdragon.importar(conexao, progresso=progresso)
+    trazidas = banco.importar_partidas_antigas(conexao, BANCO_ANTIGO)
+    if trazidas:
+        progresso(f"{trazidas} registros de partidas trazidos do banco antigo.")
     conexao.close()
-    progresso(f"Pronto: {len(arquivos)} arquivos importados.")
+    progresso("Pronto: dados do set atualizados.")
 
 
 def atualizar_meta(progresso=print):

@@ -1,0 +1,8 @@
+streamlit>=1.59
+pandas>=3.0
+requests>=2.34
+pillow>=12.3
+numpy>=2.5
+opencv-python>=5.0
+mss>=10.2
+winocr>=0.0.15

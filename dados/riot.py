@@ -102,9 +102,9 @@ def _salvar_partida(conexao, partida):
     info = partida["info"]
     match_id = partida["metadata"]["match_id"]
     conexao.execute(
-        "INSERT OR REPLACE INTO partidas VALUES (?,?,?,?,?)",
+        "INSERT OR REPLACE INTO partidas VALUES (?,?,?,?,?,?)",
         (match_id, info.get("game_datetime"), info.get("game_version"),
-         info.get("tft_set_number"), info.get("queue_id")),
+         info.get("tft_set_number"), info.get("queue_id"), info.get("game_length")),
     )
     for jogador in info.get("participants", []):
         unidades = [
@@ -116,15 +116,18 @@ def _salvar_partida(conexao, partida):
             for t in jogador.get("traits", [])
         ]
         conexao.execute(
-            "INSERT OR REPLACE INTO participacoes VALUES (?,?,?,?,?,?,?)",
+            "INSERT OR REPLACE INTO participacoes VALUES (?,?,?,?,?,?,?,?,?,?)",
             (match_id, jogador.get("puuid"), jogador.get("placement"), jogador.get("level"),
+             jogador.get("gold_left"), jogador.get("last_round"), jogador.get("time_eliminated"),
              json.dumps(unidades), json.dumps(tracos), json.dumps(jogador.get("augments", []))),
         )
     conexao.commit()
 
 
-def coletar_partidas(conexao, chave, jogadores=20, partidas_por_jogador=10, progresso=print):
+def coletar_partidas(conexao, chave, jogadores=60, partidas_por_jogador=20, progresso=print):
     """Baixa as partidas ranqueadas mais recentes dos melhores jogadores do BR.
+
+    Com os valores padrão são uns 700 a 900 pedidos: 15 a 20 minutos com a chave gratuita.
 
     `progresso` recebe mensagens de texto (print no terminal, ou a barra do app).
     Devolve quantas partidas novas foram salvas.

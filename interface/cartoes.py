@@ -3,7 +3,7 @@
 from html import escape
 
 from interface.estilo import CORES_CUSTO, CORES_ESTILO
-from interface.imagens import data_uri
+from interface.imagens import icone
 from logica import itens as modulo_itens
 from logica import montador
 from visao import estado_compartilhado
@@ -25,7 +25,7 @@ def _retrato(campeao, situacao, chance=None):
         selo = ""
     return (
         f'<div class="retrato {"tem" if estrelas else "falta"}">'
-        f'<div class="foto" style="--cor:{cor}; background-image:url({data_uri("campeao", campeao.chave)})">{selo}</div>'
+        f'<div class="foto" style="--cor:{cor}; background-image:url({icone("campeao", campeao.chave)})">{selo}</div>'
         f'<div class="nome">{escape(campeao.nome)}</div></div>'
     )
 
@@ -49,7 +49,7 @@ def _itens(comp, catalogo, componentes):
             continue
         icones = "".join(
             f'<div class="item" title="{escape(s.item.nome)} — {escape(s.status)}" '
-            f'style="background-image:url({data_uri("item", s.item.chave)})">'
+            f'style="background-image:url({icone("item", s.item.chave)})">'
             f'<div class="bola {CLASSE_STATUS.get(s.status, "falta2")}"></div></div>'
             for s in sugestoes
         )
@@ -76,6 +76,16 @@ def _numeros(comp):
     )
 
 
+def _plano(comp):
+    """Como jogar a comp (só comps meta: vem dos tabuleiros de alto elo)."""
+    plano = comp.estatisticas.get("plano")
+    if not plano:
+        return ""
+    essenciais = comp.estatisticas.get("essenciais") or []
+    centrais = f'<div class="essenciais">Peças centrais: {escape(", ".join(essenciais))}</div>' if essenciais else ""
+    return f'<div class="plano">🧭 <b>{escape(plano.estilo)}</b> · {escape(plano.texto)}{centrais}</div>'
+
+
 def html_da_comp(comp, situacao, catalogo, componentes):
     chances = montador.chance_dos_que_faltam(comp, situacao, catalogo)
     retratos = "".join(_retrato(c, situacao, chances.get(c.id)) for c in comp.campeoes)
@@ -87,6 +97,7 @@ def html_da_comp(comp, situacao, catalogo, componentes):
         f'<span class="tem">Você tem {len(comp.tem)}/{len(comp.campeoes)}</span>'
         "</div>"
         f"{_numeros(comp)}"
+        f"{_plano(comp)}"
         f'<div class="retratos">{retratos}</div>'
         f"{_tracos(comp)}"
         f"{_itens(comp, catalogo, componentes)}"
@@ -106,7 +117,17 @@ def html_da_loja(loja, selos):
         cor = CORES_CUSTO.get(campeao.custo, "#888")
         cartas.append(
             f'<div class="carta-loja{" destaque" if selo else ""}" style="--cor:{cor}">'
-            f'<div class="foto" style="background-image:url({data_uri("campeao", campeao.chave)})">{etiqueta}</div>'
+            f'<div class="foto" style="background-image:url({icone("campeao", campeao.chave)})">{etiqueta}</div>'
             f"<div>{escape(campeao.nome)}</div></div>"
         )
     return f'<div class="loja-agora"><b>🛒 Loja agora</b><div class="cartas">{"".join(cartas)}</div></div>'
+
+
+def html_das_dicas(dicas):
+    """Caixa '💡 Agora': dicas de nível, rolagem e juros para o momento da partida."""
+    if not dicas:
+        return ""
+    linhas = "".join(
+        f'<div class="dica{" urgente" if d.urgente else ""}">{d.icone} {escape(d.texto)}</div>' for d in dicas
+    )
+    return f'<div class="dicas"><b>💡 Agora</b>{linhas}</div>'

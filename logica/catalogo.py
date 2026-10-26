@@ -1,57 +1,67 @@
-"""Carrega os dados de um set do banco para objetos simples, usados pelo resto da lógica.
+"""Carrega os dados do set do banco para objetos simples, usados pelo resto da lógica.
 
-Os nomes ficam em português (como aparecem no jogo) quando o Community Dragon tem
-a tradução; o nome em inglês do datatft fica guardado em `nome_en`.
+Os ids são os nomes internos da Riot (ex.: 'DA_18_LeBlanc'), iguais aos das partidas
+da API, e os nomes estão em português, como aparecem no jogo.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
-from dados import banco, cdragon
+from dados import banco, economia
 
 SET_PADRAO = "18"
-IDIOMA_PADRAO = "en"
-COMPONENTES_ESPECIAIS = {508, 31000}  # Espátula e Frigideira (fazem emblemas)
+COMPONENTES_ESPECIAIS = {"DA_Component_Spatula", "DA_Component_FryingPan"}  # fazem emblemas
 
 
 @dataclass(frozen=True)
 class Traco:
     id: str
     nome: str
-    tipo: str               # "origem" ou "classe"
     niveis: tuple           # ex.: (2, 4, 6)
     estilos: tuple          # 1 bronze, 2 prata, 3 ouro, 4 prismático (um por nível)
     descricao: str = ""
-    chave: str = ""         # nome interno (o mesmo da Riot e do Community Dragon)
-    nome_en: str = ""
+    efeitos: tuple = ()     # texto do efeito de cada nível
 
     @property
     def unico(self):
         """Traço de um campeão só (ex.: Avatar da Lux): ativa sozinho."""
         return self.niveis == (1,)
 
+    @property
+    def chave(self):
+        return self.id
+
 
 @dataclass(frozen=True)
 class Campeao:
-    id: int
+    id: str
     nome: str
     custo: int
     tracos: tuple           # ids dos traços
-    itens_recomendados: tuple
-    papel: str = ""
+    # os três abaixo vêm das partidas de alto elo (logica/taticas.py)
+    itens_recomendados: tuple = ()
+    impacto: float = 0.0        # colocação acima (+) ou abaixo (-) da média de quem termina com ele
+    taxa_de_itens: float = 0.0  # fração das partidas em que ele segura 3 itens (alta = carry)
     habilidade: str = ""
-    chave: str = ""
-    nome_en: str = ""
+    habilidade_desc: str = ""
+    alcance: float = 0
+
+    @property
+    def chave(self):
+        return self.id
 
 
 @dataclass(frozen=True)
 class Item:
-    id: int
+    id: str
     nome: str
-    tipo: str
+    tipo: str               # Componente, Completo, Emblema, Radiante, Artefato, Especial
     componentes: tuple      # (id, id) ou () para componentes e itens sem receita
     traco_id: str | None = None  # para emblemas
-    chave: str = ""
-    nome_en: str = ""
+    descricao: str = ""
+
+    @property
+    def chave(self):
+        return self.id
 
 
 @dataclass
@@ -60,80 +70,91 @@ class Catalogo:
     campeoes: dict = field(default_factory=dict)        # id -> Campeao
     tracos: dict = field(default_factory=dict)          # id -> Traco
     itens: dict = field(default_factory=dict)           # id -> Item
-    chances_loja: dict = field(default_factory=dict)    # nivel -> {custo: chance}
-    copias_por_custo: dict = field(default_factory=dict)  # custo -> cópias de cada campeão no pool
-    xp_para_subir: dict = field(default_factory=dict)   # nivel -> XP para ir ao próximo nível
-    nomes_locais: dict = field(default_factory=dict)    # chave -> nome em português (como aparece no jogo)
+    chances_loja: dict = field(default_factory=lambda: dict(economia.CHANCES_DA_LOJA))
+    copias_por_custo: dict = field(default_factory=lambda: dict(economia.COPIAS_POR_CUSTO))
+    xp_para_subir: dict = field(default_factory=lambda: dict(economia.XP_PARA_SUBIR))
+    impacto_dos_tracos: dict = field(default_factory=dict)  # (traco_id, nivel) -> impacto (alto elo)
 
     def chances_no_nivel(self, nivel):
         """{custo: chance} no nível. Acima do último nível da tabela, usa o último."""
-        if not self.chances_loja:
-            return {}
-        return self.chances_loja.get(min(nivel, max(self.chances_loja)), {})
+        return self.chances_loja.get(min(max(nivel, 1), max(self.chances_loja)), {})
 
     def campeao_por_nome(self, nome):
-        """Aceita o nome em português ou em inglês."""
-        return next((c for c in self.campeoes.values() if nome in (c.nome, c.nome_en)), None)
+        """Aceita o nome com ou sem acento/maiúsculas (ex.: 'kogmaw' acha Kog'Maw) ou o id."""
+        procurado = _simples(nome)
+        return next((c for c in self.campeoes.values() if procurado in (_simples(c.nome), _simples(c.id))), None)
 
     def componentes(self):
-        return sorted((i for i in self.itens.values() if i.tipo == "Componente"), key=lambda i: i.id)
+        return sorted((i for i in self.itens.values() if i.tipo == "Componente"),
+                      key=lambda i: (i.id in COMPONENTES_ESPECIAIS, i.nome))
 
     def receitas(self):
         """Itens que se montam com dois componentes."""
         return [i for i in self.itens.values() if len(i.componentes) == 2]
 
 
-def carregar(numero_set=SET_PADRAO, idioma=IDIOMA_PADRAO):
-    conexao = banco.conectar()
-    filtro = (numero_set, idioma)
-    catalogo = Catalogo(numero_set=numero_set)
-    catalogo.nomes_locais = cdragon.nomes_locais(conexao, numero_set)
+def _simples(texto):
+    return "".join(letra for letra in (texto or "").lower() if letra.isalnum())
 
-    def nome_local(linha):
-        return catalogo.nomes_locais.get(linha["chave"]) or linha["nome"]
+
+def carregar(numero_set=SET_PADRAO, com_taticas=True):
+    """Lê o banco. Com `com_taticas`, os itens recomendados vêm das partidas de alto elo."""
+    conexao = banco.conectar()
+    catalogo = Catalogo(numero_set=numero_set)
 
     niveis = {}
-    for linha in conexao.execute(
-        "SELECT traco_id, quantidade, estilo FROM traco_niveis WHERE set_numero=? AND idioma=? ORDER BY quantidade",
-        filtro,
-    ):
-        niveis.setdefault(linha["traco_id"], []).append((linha["quantidade"], linha["estilo"] or 1))
-
-    for linha in conexao.execute("SELECT * FROM tracos WHERE set_numero=? AND idioma=?", filtro):
-        lista = niveis.get(linha["id"], [])
-        catalogo.tracos[linha["id"]] = Traco(
-            id=linha["id"], nome=nome_local(linha), nome_en=linha["nome"], tipo=linha["tipo"],
-            descricao=linha["descricao"], chave=linha["chave"] or "",
-            niveis=tuple(q for q, _ in lista), estilos=tuple(e for _, e in lista),
+    for linha in conexao.execute("SELECT traco, minimo, estilo, efeito FROM traco_niveis ORDER BY minimo"):
+        niveis.setdefault(linha["traco"], []).append((linha["minimo"], linha["estilo"], linha["efeito"] or ""))
+    for linha in conexao.execute("SELECT * FROM tracos"):
+        lista = niveis.get(linha["chave"], [])
+        catalogo.tracos[linha["chave"]] = Traco(
+            id=linha["chave"], nome=linha["nome"], descricao=linha["descricao"] or "",
+            niveis=tuple(n for n, _, _ in lista), estilos=tuple(e for _, e, _ in lista),
+            efeitos=tuple(t for _, _, t in lista),
         )
 
     tracos_do_campeao = {}
-    for linha in conexao.execute("SELECT campeao_id, traco_id FROM campeao_traco WHERE set_numero=? AND idioma=?", filtro):
-        tracos_do_campeao.setdefault(linha["campeao_id"], []).append(linha["traco_id"])
-
-    for linha in conexao.execute("SELECT * FROM campeoes WHERE set_numero=? AND idioma=?", filtro):
-        recomendados = tuple(int(x) for x in (linha["itens_recomendados"] or "").split(",") if x.strip().isdigit())
-        catalogo.campeoes[linha["id"]] = Campeao(
-            id=linha["id"], nome=nome_local(linha), nome_en=linha["nome"], custo=linha["custo"],
-            tracos=tuple(tracos_do_campeao.get(linha["id"], [])), itens_recomendados=recomendados,
-            papel=linha["papel"] or "", habilidade=linha["habilidade"] or "", chave=linha["chave"] or "",
+    for linha in conexao.execute("SELECT campeao, traco FROM campeao_traco"):
+        tracos_do_campeao.setdefault(linha["campeao"], []).append(linha["traco"])
+    for linha in conexao.execute("SELECT * FROM campeoes"):
+        catalogo.campeoes[linha["chave"]] = Campeao(
+            id=linha["chave"], nome=linha["nome"], custo=linha["custo"],
+            tracos=tuple(tracos_do_campeao.get(linha["chave"], [])),
+            habilidade=linha["habilidade"] or "", habilidade_desc=linha["habilidade_desc"] or "",
+            alcance=linha["alcance"] or 0,
         )
 
-    for linha in conexao.execute("SELECT * FROM itens WHERE set_numero=? AND idioma=?", filtro):
-        componentes = tuple(c for c in (linha["componente_1"], linha["componente_2"]) if c)
-        catalogo.itens[linha["id"]] = Item(
-            id=linha["id"], nome=nome_local(linha), nome_en=linha["nome"], tipo=linha["tipo"],
-            componentes=componentes, traco_id=linha["traco_id"], chave=linha["chave"] or "",
+    for linha in conexao.execute("SELECT * FROM itens"):
+        catalogo.itens[linha["chave"]] = Item(
+            id=linha["chave"], nome=linha["nome"], tipo=linha["tipo"],
+            componentes=tuple(c for c in (linha["componente_1"], linha["componente_2"]) if c),
+            traco_id=linha["traco"], descricao=linha["descricao"] or "",
         )
-
-    for linha in conexao.execute("SELECT nivel, custo, chance FROM economia_loja WHERE set_numero=? AND idioma=?", filtro):
-        catalogo.chances_loja.setdefault(linha["nivel"], {})[linha["custo"]] = linha["chance"]
-
-    for linha in conexao.execute("SELECT custo, copias FROM pool WHERE set_numero=? AND idioma=?", filtro):
-        catalogo.copias_por_custo[linha["custo"]] = linha["copias"]
-
-    for linha in conexao.execute("SELECT nivel, xp_para_subir FROM economia_xp WHERE set_numero=? AND idioma=?", filtro):
-        catalogo.xp_para_subir[linha["nivel"]] = linha["xp_para_subir"]
-
     conexao.close()
+
+    if com_taticas:
+        aplicar_taticas(catalogo)
     return catalogo
+
+
+def aplicar_taticas(catalogo):
+    """Preenche itens recomendados, impacto e taxa de itens com o que as partidas de alto elo mostram."""
+    from logica import taticas  # aqui dentro: taticas também usa o catálogo
+
+    tabuleiros = taticas.ler_tabuleiros(catalogo)
+    if not tabuleiros:
+        return
+    recomendados = taticas.itens_recomendados(catalogo)
+    forca = taticas.forca_dos_campeoes(catalogo, tabuleiros)
+    carry = taticas.taxa_de_carry(catalogo, tabuleiros)
+    catalogo.campeoes = {
+        id_: replace(
+            c, itens_recomendados=tuple(recomendados.get(id_, ())),
+            impacto=round(forca[id_].impacto, 3) if id_ in forca else 0.0,
+            taxa_de_itens=round(carry.get(id_, 0.0), 3),
+        )
+        for id_, c in catalogo.campeoes.items()
+    }
+    catalogo.impacto_dos_tracos = {
+        chave: round(d.impacto, 3) for chave, d in taticas.forca_dos_tracos(catalogo, tabuleiros).items()
+    }

@@ -15,10 +15,11 @@ import streamlit as st
 import atualizar
 from dados import banco, riot
 from interface import estilo
-from interface.cartoes import html_da_comp, html_da_loja
+from interface.cartoes import html_da_comp, html_da_loja, html_das_dicas
 from logica import catalogo as modulo_catalogo
 from logica import itens as modulo_itens
-from logica import manuais, meta, montador
+from logica import dicas as modulo_dicas
+from logica import manuais, meta, montador, taticas
 from logica.loja import chance_na_loja
 from visao import acompanhamento, estado_compartilhado
 from visao.captura import capturar_tela
@@ -72,6 +73,33 @@ def comps_do_algoritmo(_catalogo, chave_situacao, tamanho):
 @st.cache_resource(show_spinner=False, max_entries=50)
 def comps_da_meta(_catalogo, chave_situacao, partidas):  # `partidas` só serve para renovar o cache
     return meta.comps_meta(_situacao_de(chave_situacao), _catalogo)
+
+
+@st.cache_resource(show_spinner=False, max_entries=2)
+def tabelas_de_taticas(_catalogo, partidas):
+    """Tabelas da aba Táticas (calculadas uma vez por quantidade de partidas no banco)."""
+    tabuleiros = taticas.ler_tabuleiros(_catalogo)
+    if not tabuleiros:
+        return None
+    por_nivel = pd.DataFrame([
+        {"Nível final": nivel, "Jogadores": f"{d.jogos / len(tabuleiros):.0%}",
+         "Colocação média": round(d.media, 2), "Top 4": f"{d.top4:.0%}"}
+        for nivel, d in taticas.desempenho_por_nivel(_catalogo, tabuleiros).items()
+    ])
+    forca = taticas.forca_dos_campeoes(_catalogo, tabuleiros)
+    campeoes = pd.DataFrame([
+        {"Campeão": c.nome, "Custo": c.custo, "Jogos": forca[c.id].jogos,
+         "Colocação (ajustada)": round(forca[c.id].ajustada, 2), "Top 4": f"{forca[c.id].top4:.0%}",
+         "Segura 3 itens": f"{c.taxa_de_itens:.0%}"}
+        for c in _catalogo.campeoes.values() if c.id in forca
+    ]).sort_values("Colocação (ajustada)")
+    tracos = pd.DataFrame([
+        {"Traço": _catalogo.tracos[id_traco].nome, "Nível": nivel, "Jogos": d.jogos,
+         "Colocação (ajustada)": round(d.ajustada, 2), "Top 4": f"{d.top4:.0%}"}
+        for (id_traco, nivel), d in taticas.forca_dos_tracos(_catalogo, tabuleiros).items()
+        if not _catalogo.tracos[id_traco].unico
+    ]).sort_values("Colocação (ajustada)")
+    return {"partidas": len(tabuleiros) // 8, "por_nivel": por_nivel, "campeoes": campeoes, "tracos": tracos}
 
 
 # ---------------------------------------------------------------- estado do seu jogo
@@ -168,8 +196,9 @@ def leitura_da_tela(catalogo):
 
     anterior = st.session_state.leitura
     mudou = bool(compras) or anterior is None or (
-        (leitura.nivel, leitura.ouro, leitura.loja, leitura.itens, leitura.tracos)
-        != (anterior.nivel, anterior.ouro, anterior.loja, anterior.itens, anterior.tracos)
+        (leitura.nivel, leitura.xp, leitura.estagio, leitura.ouro, leitura.loja, leitura.itens, leitura.tracos)
+        != (anterior.nivel, anterior.xp, anterior.estagio, anterior.ouro, anterior.loja, anterior.itens,
+            anterior.tracos)
     )
     st.session_state.leitura = leitura
     estado_compartilhado.renovar()
@@ -188,6 +217,8 @@ def resumo_da_leitura(catalogo):
     if not (st.session_state.get("lendo") and leitura):
         return
     partes = []
+    if leitura.estagio:
+        partes.append(f"Estágio **{leitura.estagio[0]}-{leitura.estagio[1]}**")
     if leitura.nivel:
         partes.append(f"Nível **{leitura.nivel}**")
     if leitura.ouro is not None:
@@ -273,7 +304,7 @@ def coluna_seu_jogo(catalogo):
 
 def painel_de_dados():
     with st.expander("⚙️ Dados e chave da Riot"):
-        if st.button("🔄 Atualizar dados do jogo (datatft + nomes em português)"):
+        if st.button("🔄 Atualizar dados do jogo (Community Dragon)"):
             with st.status("Baixando...", expanded=True) as status:
                 atualizar.atualizar_dados_de_jogo(progresso=status.write)
             st.cache_resource.clear()
@@ -287,7 +318,7 @@ def painel_de_dados():
         if st.button("Salvar chave") and nova.strip():
             riot.salvar_chave(nova)
             st.success("Chave salva no arquivo .env.")
-        if riot.ler_chave() and st.button("Baixar partidas do alto elo do BR (3 a 5 minutos)"):
+        if riot.ler_chave() and st.button("Baixar partidas do alto elo do BR (15 a 20 minutos)"):
             with st.status("Baixando partidas...", expanded=True) as status:
                 try:
                     atualizar.atualizar_meta(progresso=status.write)
@@ -306,13 +337,13 @@ def coluna_comps(situacao, catalogo, componentes):
     tamanho = b.number_input("Tamanho do time", 1, 12, max(situacao.nivel, len(situacao.fixos), 1))
 
     comps = []
+    da_meta, resumo = comps_da_meta(catalogo, chave, total_de_partidas())
+    # as mais perto do que você tem primeiro; empate decide pela colocação média ajustada
+    da_meta = sorted(da_meta, key=lambda c: (-c.porcentagem_que_tem, c.estatisticas["media_ajustada"]))
     if fonte in ("Todas", "Para você"):
         with st.spinner("Montando comps..."):
             comps += comps_do_algoritmo(catalogo, chave, tamanho)
     if fonte in ("Todas", "Meta"):
-        da_meta, resumo = comps_da_meta(catalogo, chave, total_de_partidas())
-        # as mais perto do que você tem primeiro; empate decide pela colocação média ajustada
-        da_meta = sorted(da_meta, key=lambda c: (-c.porcentagem_que_tem, c.estatisticas["media_ajustada"]))
         comps += da_meta[:5 if fonte == "Todas" else 15]
         if fonte == "Meta":
             st.caption(f"{resumo['partidas']} partidas de Challenger/Grão-Mestre do BR · "
@@ -323,19 +354,41 @@ def coluna_comps(situacao, catalogo, componentes):
         if desconhecidos:
             st.warning("Campeões não encontrados no set atual: " + ", ".join(desconhecidos))
 
-    leitura = st.session_state.leitura
+    leitura = st.session_state.leitura if st.session_state.get("lendo") else None
+    alvo = comps[0] if comps else None
+    dicas_agora = []
+    if leitura and alvo:
+        plano = plano_do_alvo(alvo, da_meta)
+        feitos = bool(plano and plano.tres_estrelas) and all(
+            situacao.unidades.get(c.id) == 3 for c in plano.tres_estrelas
+        )
+        dicas_agora = modulo_dicas.dicas(leitura, plano, catalogo, faltando=alvo.faltam, tres_estrelas_feitos=feitos)
+        st.html(html_das_dicas(dicas_agora))
     selos = []
-    if st.session_state.get("lendo") and leitura and any(leitura.loja):
+    if leitura and any(leitura.loja):
         selos = estado_compartilhado.selos_da_loja(leitura.loja, comps[:3], situacao)
         st.html(html_da_loja(leitura.loja, selos))
     estado_compartilhado.salvar(
-        estado_compartilhado.montar(comps[0] if comps else None, situacao, selos, catalogo, componentes)
+        estado_compartilhado.montar(alvo, situacao, selos, catalogo, componentes, dicas_agora)
     )
 
     if not comps:
         st.info("Nada para mostrar aqui ainda.")
     for comp in comps:
         st.html(html_da_comp(comp, situacao, catalogo, componentes))
+
+
+MINIMO_EM_COMUM = 4  # campeões em comum para uma comp do algoritmo usar o plano de uma comp meta
+
+
+def plano_do_alvo(alvo, comps_meta):
+    """Plano de jogo da comp alvo: o dela (comp meta) ou o da comp meta mais parecida."""
+    if alvo.estatisticas.get("plano"):
+        return alvo.estatisticas["plano"]
+    ids = {c.id for c in alvo.campeoes}
+    parecidas = [(len(ids & {c.id for c in m.campeoes}), m) for m in comps_meta]
+    em_comum, mais_parecida = max(parecidas, key=lambda x: x[0], default=(0, None))
+    return mais_parecida.estatisticas["plano"] if em_comum >= MINIMO_EM_COMUM else None
 
 
 # ---------------------------------------------------------------- abas de ferramentas
@@ -375,7 +428,7 @@ def aba_loja(situacao, catalogo):
     st.dataframe(pd.DataFrame(linhas), hide_index=True, width="stretch")
 
     st.markdown("**Chance de cada custo por nível (%)**")
-    tabela = pd.DataFrame(catalogo.chances_loja).T.sort_index() * 100
+    tabela = pd.DataFrame(catalogo.chances_loja).T.sort_index().fillna(0) * 100
     tabela.columns = [f"Custo {c}" for c in tabela.columns]
     tabela.index.name = "Nível"
     st.dataframe(tabela.round(0), width="stretch")
@@ -405,24 +458,54 @@ def aba_cadastro(catalogo):
                 st.rerun()
 
 
-def aba_banco():
-    conexao = banco.conectar()
-    sets = [linha[0] for linha in conexao.execute("SELECT DISTINCT set_numero || ' / ' || idioma FROM metadados ORDER BY 1 DESC")]
-    tabelas = ["campeoes", "tracos", "traco_niveis", "itens", "augments", "charms", "economia_loja", "economia_xp", "pool", "nomes_locais"]
-    a, b, c = st.columns(3)
-    escolha_set = a.selectbox("Set / idioma", sets)
-    tabela = b.selectbox("Tabela", tabelas)
-    busca = c.text_input("Filtrar (qualquer coluna)")
-    numero_set, idioma = escolha_set.split(" / ")
-    if tabela == "nomes_locais":
-        dados = pd.read_sql("SELECT * FROM nomes_locais WHERE set_numero=?", conexao, params=(numero_set,))
+def aba_taticas(catalogo):
+    tabelas = tabelas_de_taticas(catalogo, total_de_partidas())
+    if not tabelas:
+        st.info("Baixe partidas do alto elo (⚙️ Dados e chave da Riot) para ver as táticas.")
+        return
+    st.caption(f"Tabuleiro final de {tabelas['partidas']} partidas ranqueadas de Challenger/Grão-Mestre do BR. "
+               "Colocação ajustada: com poucos jogos, a média é puxada para 4,5.")
+    a, b = st.columns([2, 3])
+    with a:
+        st.markdown("**Nível final x colocação**")
+        st.dataframe(tabelas["por_nivel"], hide_index=True, width="stretch")
+    with b:
+        st.markdown("**Campeões que mais ajudam a colocar bem**")
+        st.dataframe(tabelas["campeoes"], hide_index=True, width="stretch", height=260)
+    st.markdown("**Traços mais fortes (por nível ativado)**")
+    st.dataframe(tabelas["tracos"], hide_index=True, width="stretch", height=260)
+
+    st.markdown("**Melhores builds de 3 itens**")
+    carries = sorted(catalogo.campeoes.values(), key=lambda c: -c.taxa_de_itens)
+    campeao = st.selectbox(
+        "Campeão", carries, format_func=lambda c: f"{c.nome} (segura 3 itens em {c.taxa_de_itens:.0%} dos jogos)"
+    )
+    builds = taticas.builds_do_campeao(catalogo, campeao.id)
+    if builds:
+        st.dataframe(pd.DataFrame([
+            {"Itens": " + ".join(catalogo.itens[i].nome for i in b.itens), "Jogos": b.desempenho.jogos,
+             "Colocação média": round(b.desempenho.media, 2), "Top 4": f"{b.desempenho.top4:.0%}"}
+            for b in builds
+        ]), hide_index=True, width="stretch")
     else:
-        dados = pd.read_sql(f"SELECT * FROM {tabela} WHERE set_numero=? AND idioma=?", conexao, params=(numero_set, idioma))
+        st.caption("Poucos jogos com esse campeão segurando 3 itens.")
+
+
+TABELAS_DO_BANCO = ["campeoes", "tracos", "traco_niveis", "campeao_traco", "itens", "augments",
+                    "partidas", "participacoes", "metadados"]
+
+
+def aba_banco():
+    a, b = st.columns(2)
+    tabela = a.selectbox("Tabela", TABELAS_DO_BANCO)
+    busca = b.text_input("Filtrar (qualquer coluna)")
+    conexao = banco.conectar()
+    limite = " LIMIT 2000" if tabela == "participacoes" else ""
+    dados = pd.read_sql(f"SELECT * FROM {tabela}{limite}", conexao)
     conexao.close()
-    dados = dados.drop(columns=["set_numero", "idioma"])
     if busca:
         dados = dados[dados.astype(str).apply(lambda col: col.str.contains(busca, case=False)).any(axis=1)]
-    st.caption(f"{len(dados)} linhas")
+    st.caption(f"{len(dados)} linhas" + (" (as primeiras 2000)" if limite else ""))
     st.dataframe(dados, hide_index=True, width="stretch")
 
 
@@ -450,12 +533,14 @@ with direita:
     st.subheader("🧩 Comps")
     coluna_comps(situacao, catalogo, componentes)
     st.divider()
-    abas = st.tabs(["🗡️ Itens", "🎲 Loja", "📌 Cadastrar minhas comps", "📚 Banco de dados"])
+    abas = st.tabs(["🧠 Táticas", "🗡️ Itens", "🎲 Loja", "📌 Cadastrar minhas comps", "📚 Banco de dados"])
     with abas[0]:
-        aba_itens(catalogo, componentes)
+        aba_taticas(catalogo)
     with abas[1]:
-        aba_loja(situacao, catalogo)
+        aba_itens(catalogo, componentes)
     with abas[2]:
-        aba_cadastro(catalogo)
+        aba_loja(situacao, catalogo)
     with abas[3]:
+        aba_cadastro(catalogo)
+    with abas[4]:
         aba_banco()

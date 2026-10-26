@@ -22,6 +22,8 @@ TIPOS_NO_BANCO = ("Componente", "Completo", "Emblema", "Radiante", "Artefato")
 @dataclass
 class LeituraDaTela:
     nivel: int | None = None
+    xp: tuple | None = None                            # (XP atual, XP para subir), ex.: (2, 56)
+    estagio: tuple | None = None                       # (estágio, rodada), ex.: (4, 3)
     ouro: int | None = None
     loja: list = field(default_factory=list)          # 5 posições: Campeao ou None (vazia/comprada)
     tracos: dict = field(default_factory=dict)        # traco_id -> quantidade (do painel)
@@ -56,16 +58,33 @@ class Leitor:
     # ------------------------------------------------------------ partes do HUD
 
     def ler_nivel(self, imagem):
-        """Pelo XP: '6/20' quer dizer que faltam 20 de XP para subir, e isso só acontece no nível 5."""
+        """Devolve (texto, nível, (xp atual, xp para subir)).
+
+        O número grande do nível o OCR lê mal; o XP ('6/20') resolve: só o nível 5 pede 20 para subir.
+        """
         texto = ocr.ler_texto(_recorte(imagem, regioes.NIVEL_E_XP))
+        achado = re.search(r"(\d+)\s*/\s*(\d+)", texto)
+        xp = (int(achado.group(1)), int(achado.group(2))) if achado else None
         escrito = re.search(r"Nv\.?\s*(\d+)", texto)
         if escrito:
-            return texto, int(escrito.group(1))
-        xp = re.search(r"(\d+)\s*/\s*(\d+)", texto)
+            return texto, int(escrito.group(1)), xp
         if xp:
-            niveis = [nivel for nivel, total in self.catalogo.xp_para_subir.items() if total == int(xp.group(2))]
+            niveis = [nivel for nivel, total in self.catalogo.xp_para_subir.items() if total == xp[1]]
             if niveis:
-                return texto, min(niveis)  # se dois níveis pedem o mesmo XP, fica o menor
+                return texto, min(niveis), xp  # se dois níveis pedem o mesmo XP, fica o menor
+        return texto, None, xp
+
+    TENTATIVAS_ESTAGIO = [(3, 0), (2, 0), (2, 120)]
+
+    def ler_estagio(self, imagem):
+        """'4-3' no topo da tela -> (4, 3)."""
+        recorte = _recorte(imagem, regioes.ESTAGIO)
+        texto = ""
+        for ampliar, limiar in self.TENTATIVAS_ESTAGIO:
+            texto = ocr.ler_texto(recorte, ampliar=ampliar, limiar=limiar)
+            achado = re.search(r"([1-7])\s*[-–—]\s*([1-7])", texto)
+            if achado:
+                return texto, (int(achado.group(1)), int(achado.group(2)))
         return texto, None
 
     def ler_ouro(self, imagem):
@@ -164,13 +183,14 @@ class Leitor:
 
     def ler(self, imagem):
         leitura = LeituraDaTela()
-        texto_nivel, leitura.nivel = self.ler_nivel(imagem)
+        texto_nivel, leitura.nivel, leitura.xp = self.ler_nivel(imagem)
+        texto_estagio, leitura.estagio = self.ler_estagio(imagem)
         texto_ouro, leitura.ouro = self.ler_ouro(imagem)
         textos_loja, leitura.loja = self.ler_loja(imagem)
         textos_tracos, leitura.tracos = self.ler_tracos(imagem)
         detalhes_itens, leitura.itens = self.ler_itens(imagem)
         leitura.textos_crus = {
-            "nivel": texto_nivel, "ouro": texto_ouro, "loja": textos_loja,
+            "nivel": texto_nivel, "estagio": texto_estagio, "ouro": texto_ouro, "loja": textos_loja,
             "tracos": textos_tracos, "itens": detalhes_itens,
         }
         return leitura

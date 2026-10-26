@@ -4,3 +4,6 @@ primaryColor = "#e8b941"
 
 [browser]
 gatherUsageStats = false
+
+[server]
+enableStaticServing = true

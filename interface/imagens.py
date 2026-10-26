@@ -1,23 +1,15 @@
-"""Ícones de campeões e itens como 'data URI', para usar direto no HTML/CSS da página."""
+"""Endereço dos ícones de campeões e itens para usar no HTML/CSS da página.
 
-import base64
-import io
-from functools import lru_cache
-
-from PIL import Image
+Os ícones ficam em static/icones e o Streamlit serve essa pasta em /app/static/
+(opção enableStaticServing em .streamlit/config.toml). Assim o navegador baixa cada
+ícone uma vez e guarda em cache, em vez de receber as imagens a cada clique.
+"""
 
 from dados import cdragon
 
-TAMANHO = 64  # px; os ícones originais têm 128
 
-
-@lru_cache(maxsize=None)
-def data_uri(tipo, chave):
-    """tipo = "campeao" ou "item". Devolve "" se o ícone não existe."""
-    caminho = cdragon.caminho_do_icone(tipo, chave) if chave else None
-    if not caminho:
+def icone(tipo, chave):
+    """tipo = "campeao" ou "item". Devolve "" se o ícone não foi baixado."""
+    if not chave or not cdragon.caminho_do_icone(tipo, chave):
         return ""
-    imagem = Image.open(caminho).convert("RGB").resize((TAMANHO, TAMANHO), Image.LANCZOS)
-    memoria = io.BytesIO()
-    imagem.save(memoria, format="JPEG", quality=85)
-    return "data:image/jpeg;base64," + base64.b64encode(memoria.getvalue()).decode()
+    return f"./app/static/icones/{tipo}/{chave}.png"

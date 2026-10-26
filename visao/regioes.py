@@ -9,6 +9,8 @@ REFERENCIA = (2560, 1440)
 
 # "Nv. 5   6/20": o OCR não lê bem o número grande do nível, então usamos o XP ("6/20")
 NIVEL_E_XP = (300, 1165, 560, 1222)
+# estágio e rodada ("4-3"), no topo; a faixa é larga porque a barra muda de tamanho com a rodada
+ESTAGIO = (900, 4, 1250, 46)
 OURO = (1222, 1178, 1275, 1214)     # "40", no centro, acima da loja (sem o ícone da moeda)
 
 # nome do campeão em cada carta da loja (sem o custo, que fica à direita)

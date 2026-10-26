@@ -57,5 +57,8 @@ def itens_para_campeao(campeao, componentes, catalogo):
 
 
 def carregadores(comp, quantidade=2):
-    """Os campeões que mais merecem itens no time: os mais caros (desempate pelo nome)."""
-    return sorted(comp.campeoes, key=lambda c: (-c.custo, c.nome))[:quantidade]
+    """Os campeões que mais merecem itens no time.
+
+    Quem mais segura 3 itens nas partidas de alto elo (taxa_de_itens); sem dados, os mais caros.
+    """
+    return sorted(comp.campeoes, key=lambda c: (-c.taxa_de_itens, -c.custo, c.nome))[:quantidade]

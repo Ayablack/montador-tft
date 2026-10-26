@@ -1,6 +1,6 @@
 """CSS da página: cores de custo, selos de traço, cartões das comps e botões com retrato."""
 
-from interface.imagens import data_uri
+from interface.imagens import icone
 
 CORES_CUSTO = {1: "#9aa0a6", 2: "#1fa34a", 3: "#2f7ae5", 4: "#b14be0", 5: "#f0b429"}
 # selos dos traços: (fundo, texto) para bronze, prata, ouro e prismático
@@ -79,6 +79,15 @@ CSS_GERAL = """
 [class*="st-key-componente_"] button { width: 44px; height: 44px; border: 2px solid #8886; }
 .custo-titulo { font-size: .78rem; font-weight: 700; margin: 6px 0 -6px; }
 
+/* ---------- plano de jogo e dicas ---------- */
+.plano { font-size: .82rem; margin: -2px 0 10px; padding: 6px 10px; border-radius: 8px;
+         background: rgba(47,122,229,.10); border-left: 3px solid #5b9cf0; }
+.plano .essenciais { opacity: .75; margin-top: 2px; }
+.dicas { border: 1px solid rgba(47,179,90,.45); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px;
+         background: rgba(47,179,90,.07); }
+.dica { font-size: .88rem; margin-top: 5px; }
+.dica.urgente { font-weight: 700; }
+
 /* ---------- loja agora (leitura da tela) ---------- */
 .loja-agora { border: 1px solid rgba(232,185,65,.45); border-radius: 12px; padding: 10px 14px;
               margin-bottom: 12px; background: rgba(232,185,65,.07); }
@@ -102,10 +111,10 @@ def css_dos_botoes(catalogo):
     for campeao in catalogo.campeoes.values():
         seletor = f'[class*="st-key-campeao_{campeao.id}_"] button'
         regras.append(
-            f"{seletor} {{ background-image: url({data_uri('campeao', campeao.chave)}); "
+            f"{seletor} {{ background-image: url({icone('campeao', campeao.chave)}); "
             f"border: 3px solid {CORES_CUSTO.get(campeao.custo, '#888')}; }}"
         )
     for componente in catalogo.componentes():
         seletor = f'[class*="st-key-componente_{componente.id}_"] button'
-        regras.append(f"{seletor} {{ background-image: url({data_uri('item', componente.chave)}); }}")
+        regras.append(f"{seletor} {{ background-image: url({icone('item', componente.chave)}); }}")
     return "<style>" + "\n".join(regras) + "</style>"

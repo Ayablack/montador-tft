@@ -32,9 +32,12 @@ def selos_da_loja(loja, comps_alvo, situacao):
     return selos
 
 
-def montar(comp, situacao, selos, catalogo, componentes):
-    """O que o overlay mostra: a comp alvo (a primeira da lista do app) e os selos da loja."""
-    dados = {"loja": selos, "comp": None}
+DICAS_NO_OVERLAY = 2
+
+
+def montar(comp, situacao, selos, catalogo, componentes, dicas=()):
+    """O que o overlay mostra: a comp alvo (a primeira da lista do app), os selos da loja e as dicas."""
+    dados = {"loja": selos, "comp": None, "dicas": [d.texto for d in list(dicas)[:DICAS_NO_OVERLAY]]}
     if comp is None:
         return dados
     carry = next(iter(modulo_itens.carregadores(comp, 1)), None)

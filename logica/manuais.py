@@ -1,9 +1,9 @@
 """Comps cadastradas à mão no arquivo minhas_comps.json (na raiz do projeto).
 
-Formato do arquivo (nomes como aparecem no app, em inglês):
+Formato do arquivo (nomes como aparecem no jogo; acento e maiúsculas não importam):
 [
   {
-    "nome": "Elderwood Spellweaver",
+    "nome": "Sabugueiro Enfeitiçador",
     "campeoes": ["LeBlanc", "Alistar", "Ornn", "Ezreal", "Gnar"],
     "notas": "Jogar no nível 8 e procurar Ezreal 2★"
   }
