@@ -176,3 +176,12 @@ Este projeto não é endossado pela Riot Games. Os ícones e textos do jogo não
 são baixados do Community Dragon na sua máquina, ao rodar `atualizar.py`.
 
 Código sob a licença [MIT](LICENSE).
+
+## Créditos e licença
+
+Este projeto é baseado no [montador-tft original](https://github.com/joaoploliveira/montador-tft), desenvolvido por [joaoploliveira](https://github.com/joaoploliveira).
+
+Esta versão é mantida por [Ayablack](https://github.com/Ayablack) e poderá incluir modificações e melhorias próprias.
+
+O projeto original é distribuído sob a licença MIT. Consulte o arquivo `LICENSE` para conhecer os termos aplicáveis.
+
