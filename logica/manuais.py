@@ -25,7 +25,9 @@ def ler():
 
 
 def salvar(comps):
-    ARQUIVO.write_text(json.dumps(comps, ensure_ascii=False, indent=2), encoding="utf-8")
+    ARQUIVO.write_text(
+        json.dumps(comps, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 
 def avaliar_todas(situacao, catalogo):
@@ -40,8 +42,16 @@ def avaliar_todas(situacao, catalogo):
             else:
                 desconhecidos.append(nome)
         if campeoes:
-            comp = avaliar(campeoes, situacao, catalogo, nome=cadastro.get("nome", "Sem nome"), origem="Minhas comps")
+            comp = avaliar(
+                campeoes,
+                situacao,
+                catalogo,
+                nome=cadastro.get("nome", "Sem nome"),
+                origem="Minhas comps",
+            )
             comp.estatisticas = {"notas": cadastro.get("notas", "")}
             avaliadas.append(comp)
-    avaliadas.sort(key=lambda comp: (comp.porcentagem_que_tem, comp.pontuacao), reverse=True)
+    avaliadas.sort(
+        key=lambda comp: (comp.porcentagem_que_tem, comp.pontuacao), reverse=True
+    )
     return avaliadas, desconhecidos

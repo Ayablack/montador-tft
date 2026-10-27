@@ -33,7 +33,9 @@ class _Tabela:
             return None
         if chave in self.por_nome:
             return self.por_nome[chave]
-        parecidos = get_close_matches(chave, self.por_nome, n=1, cutoff=SEMELHANCA_MINIMA)
+        parecidos = get_close_matches(
+            chave, self.por_nome, n=1, cutoff=SEMELHANCA_MINIMA
+        )
         return self.por_nome[parecidos[0]] if parecidos else None
 
 

@@ -13,7 +13,9 @@ from logica import itens as modulo_itens
 
 ARQUIVO = Path(__file__).resolve().parent.parent / "dados" / "overlay.json"
 SELO_COMPRE, SELO_SOBE = "COMPRE", "SOBE ★"
-LOJA_VALE_POR = 15  # segundos: sem leitura nova nesse tempo, a marcação da loja some do overlay
+LOJA_VALE_POR = (
+    15  # segundos: sem leitura nova nesse tempo, a marcação da loja some do overlay
+)
 
 
 def selos_da_loja(loja, comps_alvo, situacao):
@@ -37,20 +39,33 @@ DICAS_NO_OVERLAY = 2
 
 def montar(comp, situacao, selos, catalogo, componentes, dicas=()):
     """O que o overlay mostra: a comp alvo (a primeira da lista do app), os selos da loja e as dicas."""
-    dados = {"loja": selos, "comp": None, "dicas": [d.texto for d in list(dicas)[:DICAS_NO_OVERLAY]]}
+    dados = {
+        "loja": selos,
+        "comp": None,
+        "dicas": [d.texto for d in list(dicas)[:DICAS_NO_OVERLAY]],
+    }
     if comp is None:
         return dados
     carry = next(iter(modulo_itens.carregadores(comp, 1)), None)
-    itens = modulo_itens.itens_para_campeao(carry, componentes, catalogo) if carry else []
+    itens = (
+        modulo_itens.itens_para_campeao(carry, componentes, catalogo) if carry else []
+    )
     dados["comp"] = {
         "nome": comp.nome,
         "origem": comp.origem,
         "tem": len(comp.tem),
         "total": len(comp.campeoes),
         "campeoes": [
-            {"nome": c.nome, "custo": c.custo, "estrelas": situacao.unidades.get(c.id, 0)} for c in comp.campeoes
+            {
+                "nome": c.nome,
+                "custo": c.custo,
+                "estrelas": situacao.unidades.get(c.id, 0),
+            }
+            for c in comp.campeoes
         ],
-        "tracos": [{"texto": t.texto(), "estilo": t.estilo} for t in comp.tracos if t.ativo],
+        "tracos": [
+            {"texto": t.texto(), "estilo": t.estilo} for t in comp.tracos if t.ativo
+        ],
         "carry": carry.nome if carry else "",
         "itens": [{"nome": s.item.nome, "status": s.status} for s in itens],
     }
@@ -67,7 +82,9 @@ def salvar(dados):
         pass
     temporario = ARQUIVO.with_suffix(".tmp")
     temporario.write_text(novo, encoding="utf-8")
-    os.replace(temporario, ARQUIVO)  # troca de uma vez: o overlay nunca lê o arquivo pela metade
+    os.replace(
+        temporario, ARQUIVO
+    )  # troca de uma vez: o overlay nunca lê o arquivo pela metade
 
 
 def renovar():

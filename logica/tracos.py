@@ -12,8 +12,8 @@ NOMES_ESTILO = {0: "Inativo", 1: "Bronze", 2: "Prata", 3: "Ouro", 4: "Prismátic
 class TracoNoTime:
     traco: Traco
     quantidade: int
-    nivel_ativo: int | None    # breakpoint atingido (ex.: 4), ou None
-    estilo: int                # 0 se inativo
+    nivel_ativo: int | None  # breakpoint atingido (ex.: 4), ou None
+    estilo: int  # 0 se inativo
     proximo_nivel: int | None  # próximo breakpoint, ou None se já está no máximo
 
     @property

@@ -32,14 +32,19 @@ COPIAS_POR_CUSTO = {1: 30, 2: 25, 3: 18, 4: 10, 5: 9}
 XP_PARA_SUBIR = {2: 2, 3: 6, 4: 10, 5: 20, 6: 36, 7: 56, 8: 68, 9: 68}
 
 # ---------------------------------------------------------------- ouro e XP por rodada
-RENDA_BASE = 5                 # a partir da rodada 2-2
-OURO_POR_VITORIA = 1           # vitória contra outro jogador
-JUROS_A_CADA = 10              # +1 de ouro para cada 10 guardados...
-JUROS_MAXIMO = 5               # ...até +5 (com 50 ou mais)
-OURO_POR_SEQUENCIA = {3: 1, 4: 1, 5: 2, 6: 3}  # vitórias ou derrotas seguidas; 6 ou mais = +3
-CUSTO_DO_XP = 4                # 4 de ouro compram 4 de XP
+RENDA_BASE = 5  # a partir da rodada 2-2
+OURO_POR_VITORIA = 1  # vitória contra outro jogador
+JUROS_A_CADA = 10  # +1 de ouro para cada 10 guardados...
+JUROS_MAXIMO = 5  # ...até +5 (com 50 ou mais)
+OURO_POR_SEQUENCIA = {
+    3: 1,
+    4: 1,
+    5: 2,
+    6: 3,
+}  # vitórias ou derrotas seguidas; 6 ou mais = +3
+CUSTO_DO_XP = 4  # 4 de ouro compram 4 de XP
 XP_POR_COMPRA = 4
-XP_POR_RODADA = 2              # XP que vem sozinho a cada rodada
+XP_POR_RODADA = 2  # XP que vem sozinho a cada rodada
 CUSTO_DO_ROLL = 2
 CARTAS_NA_LOJA = 5
 

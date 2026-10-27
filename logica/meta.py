@@ -11,9 +11,9 @@ from collections import Counter, defaultdict
 from logica import taticas
 from logica.montador import avaliar
 
-MINIMO_DE_JOGOS = 5          # comps com menos jogos que isso ficam de fora
-FREQUENCIA_MINIMA = 0.4      # campeão entra na comp se aparece em 40% dos tabuleiros dela
-ESSENCIAL = 0.75             # aparece em 75% ou mais: é peça central da comp
+MINIMO_DE_JOGOS = 5  # comps com menos jogos que isso ficam de fora
+FREQUENCIA_MINIMA = 0.4  # campeão entra na comp se aparece em 40% dos tabuleiros dela
+ESSENCIAL = 0.75  # aparece em 75% ou mais: é peça central da comp
 MAXIMO_DE_CAMPEOES = 9
 
 
@@ -28,7 +28,9 @@ def _identidade(tabuleiro, catalogo):
         if nivel and not traco.unico:
             estilo = traco.estilos[traco.niveis.index(nivel)]
             ativos.append((estilo, quantidade, id_traco))
-    principais = tuple(sorted(id_traco for _, _, id_traco in sorted(ativos, reverse=True)[:2]))
+    principais = tuple(
+        sorted(id_traco for _, _, id_traco in sorted(ativos, reverse=True)[:2])
+    )
     return carry.campeao.id, principais
 
 
@@ -56,14 +58,23 @@ def comps_meta(situacao, catalogo):
         jogos = len(do_grupo)
         if jogos < MINIMO_DE_JOGOS:
             continue
-        frequencia = Counter(i for t in do_grupo for i in {u.campeao.id for u in t.unidades})
-        frequentes = [i for i, n in frequencia.most_common(MAXIMO_DE_CAMPEOES) if n / jogos >= FREQUENCIA_MINIMA]
+        frequencia = Counter(
+            i for t in do_grupo for i in {u.campeao.id for u in t.unidades}
+        )
+        frequentes = [
+            i
+            for i, n in frequencia.most_common(MAXIMO_DE_CAMPEOES)
+            if n / jogos >= FREQUENCIA_MINIMA
+        ]
 
         carry = catalogo.campeoes[id_carry]
         nomes_tracos = " + ".join(catalogo.tracos[i].nome for i in ids_tracos)
         comp = avaliar(
-            [catalogo.campeoes[i] for i in frequentes], situacao, catalogo,
-            nome=f"{carry.nome} — {nomes_tracos}" if nomes_tracos else carry.nome, origem="Meta",
+            [catalogo.campeoes[i] for i in frequentes],
+            situacao,
+            catalogo,
+            nome=f"{carry.nome} — {nomes_tracos}" if nomes_tracos else carry.nome,
+            origem="Meta",
         )
         desempenho = taticas.Desempenho([t.colocacao for t in do_grupo])
         comp.estatisticas = {
@@ -74,7 +85,11 @@ def comps_meta(situacao, catalogo):
             "vitoria": desempenho.vitorias,
             "carry": carry.nome,
             "itens_do_carry": _build_do_carry(do_grupo, carry),
-            "essenciais": [catalogo.campeoes[i].nome for i in frequentes if frequencia[i] / jogos >= ESSENCIAL],
+            "essenciais": [
+                catalogo.campeoes[i].nome
+                for i in frequentes
+                if frequencia[i] / jogos >= ESSENCIAL
+            ],
             "plano": taticas.plano_da_comp(do_grupo),
         }
         comps.append(comp)

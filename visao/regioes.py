@@ -11,7 +11,7 @@ REFERENCIA = (2560, 1440)
 NIVEL_E_XP = (300, 1165, 560, 1222)
 # estágio e rodada ("4-3"), no topo; a faixa é larga porque a barra muda de tamanho com a rodada
 ESTAGIO = (900, 4, 1250, 46)
-OURO = (1222, 1178, 1275, 1214)     # "40", no centro, acima da loja (sem o ícone da moeda)
+OURO = (1222, 1178, 1275, 1214)  # "40", no centro, acima da loja (sem o ícone da moeda)
 
 # nome do campeão em cada carta da loja (sem o custo, que fica à direita)
 LOJA_NOMES = [
@@ -27,40 +27,56 @@ CARTAS_DA_LOJA = [(x0, 1234, x0 + 258, 1434) for x0 in (600, 870, 1140, 1408, 16
 
 # painel de traços (lado esquerdo): uma linha por traço, com número + nome + breakpoints
 TRACO_X0, TRACO_X1 = 140, 340
-TRACO_CENTRO_Y = 375               # centro da primeira linha
+TRACO_CENTRO_Y = 375  # centro da primeira linha
 TRACO_PASSO = 71
 TRACO_MEIA_ALTURA = 32
 TRACO_LINHAS = 10
-HEXAGONO_X0, HEXAGONO_X1 = 88, 132  # ícone do traço: colorido se ativo, cinza se inativo
+HEXAGONO_X0, HEXAGONO_X1 = (
+    88,
+    132,
+)  # ícone do traço: colorido se ativo, cinza se inativo
 HEXAGONO_MEIA_ALTURA = 20
 
 # banco de itens: coluna de 10 quadrados na borda esquerda
-ITEM_X0, ITEM_X1 = 18, 67           # parte de dentro do quadrado (sem a moldura)
-ITEM_Y0 = 356                       # topo do primeiro quadrado (sem a moldura)
+ITEM_X0, ITEM_X1 = 18, 67  # parte de dentro do quadrado (sem a moldura)
+ITEM_Y0 = 356  # topo do primeiro quadrado (sem a moldura)
 ITEM_ALTURA = 49
-ITEM_PASSO = 72                     # distância entre um quadrado e o próximo
+ITEM_PASSO = 72  # distância entre um quadrado e o próximo
 ITEM_QUANTIDADE = 10
 
 
 def caixas_dos_itens():
     return [
-        (ITEM_X0, ITEM_Y0 + i * ITEM_PASSO, ITEM_X1, ITEM_Y0 + i * ITEM_PASSO + ITEM_ALTURA)
+        (
+            ITEM_X0,
+            ITEM_Y0 + i * ITEM_PASSO,
+            ITEM_X1,
+            ITEM_Y0 + i * ITEM_PASSO + ITEM_ALTURA,
+        )
         for i in range(ITEM_QUANTIDADE)
     ]
 
 
 def caixas_dos_tracos():
     return [
-        (TRACO_X0, TRACO_CENTRO_Y + i * TRACO_PASSO - TRACO_MEIA_ALTURA,
-         TRACO_X1, TRACO_CENTRO_Y + i * TRACO_PASSO + TRACO_MEIA_ALTURA)
+        (
+            TRACO_X0,
+            TRACO_CENTRO_Y + i * TRACO_PASSO - TRACO_MEIA_ALTURA,
+            TRACO_X1,
+            TRACO_CENTRO_Y + i * TRACO_PASSO + TRACO_MEIA_ALTURA,
+        )
         for i in range(TRACO_LINHAS)
     ]
 
 
 def caixas_dos_hexagonos():
     return [
-        (HEXAGONO_X0, TRACO_CENTRO_Y + i * TRACO_PASSO - HEXAGONO_MEIA_ALTURA,
-         HEXAGONO_X1, TRACO_CENTRO_Y + i * TRACO_PASSO + HEXAGONO_MEIA_ALTURA)
+        (
+            HEXAGONO_X0,
+            TRACO_CENTRO_Y + i * TRACO_PASSO - HEXAGONO_MEIA_ALTURA,
+            HEXAGONO_X1,
+            TRACO_CENTRO_Y + i * TRACO_PASSO + HEXAGONO_MEIA_ALTURA,
+        )
         for i in range(TRACO_LINHAS)
     ]
 

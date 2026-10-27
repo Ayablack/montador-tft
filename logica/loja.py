@@ -25,10 +25,14 @@ class ChanceNaLoja:
 def chance_na_loja(campeao, nivel, catalogo, copias_suas=0, copias_de_outros=0):
     chance_do_custo = catalogo.chances_no_nivel(nivel).get(campeao.custo, 0.0)
     copias_no_pool = catalogo.copias_por_custo.get(campeao.custo, 0)
-    campeoes_do_mesmo_custo = sum(1 for c in catalogo.campeoes.values() if c.custo == campeao.custo)
+    campeoes_do_mesmo_custo = sum(
+        1 for c in catalogo.campeoes.values() if c.custo == campeao.custo
+    )
 
     restantes = max(copias_no_pool - copias_suas - copias_de_outros, 0)
-    total_do_custo = copias_no_pool * campeoes_do_mesmo_custo - copias_suas - copias_de_outros
+    total_do_custo = (
+        copias_no_pool * campeoes_do_mesmo_custo - copias_suas - copias_de_outros
+    )
     if not chance_do_custo or not restantes or total_do_custo <= 0:
         return ChanceNaLoja(0.0, float("inf"), restantes)
 

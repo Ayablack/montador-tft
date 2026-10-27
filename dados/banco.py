@@ -46,7 +46,14 @@ CREATE TABLE IF NOT EXISTS participacoes (
 );
 """
 
-TABELAS_DE_JOGO = ["campeoes", "tracos", "traco_niveis", "campeao_traco", "itens", "augments"]
+TABELAS_DE_JOGO = [
+    "campeoes",
+    "tracos",
+    "traco_niveis",
+    "campeao_traco",
+    "itens",
+    "augments",
+]
 
 
 def conectar(caminho=None):
@@ -57,12 +64,16 @@ def conectar(caminho=None):
 
 
 def metadado(conexao, chave, padrao=None):
-    linha = conexao.execute("SELECT valor FROM metadados WHERE chave=?", (chave,)).fetchone()
+    linha = conexao.execute(
+        "SELECT valor FROM metadados WHERE chave=?", (chave,)
+    ).fetchone()
     return linha[0] if linha else padrao
 
 
 def salvar_metadado(conexao, chave, valor):
-    conexao.execute("INSERT OR REPLACE INTO metadados VALUES (?, ?)", (chave, str(valor)))
+    conexao.execute(
+        "INSERT OR REPLACE INTO metadados VALUES (?, ?)", (chave, str(valor))
+    )
 
 
 def importar_partidas_antigas(conexao, caminho_antigo):
