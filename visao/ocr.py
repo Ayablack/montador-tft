@@ -26,23 +26,41 @@ def preparar(imagem, inverter=False, ampliar=AMPLIAR, limiar=0):
     limiar: se > 0, vira preto e branco (pixels mais claros que o limiar viram texto preto).
     """
     imagem = ImageOps.grayscale(imagem)
-    imagem = imagem.resize((imagem.width * ampliar, imagem.height * ampliar), Image.LANCZOS)
+    imagem = imagem.resize(
+        (imagem.width * ampliar, imagem.height * ampliar), Image.LANCZOS
+    )
     if limiar:
         imagem = imagem.point(lambda valor: 0 if valor > limiar else 255)
     elif inverter:
         imagem = ImageOps.invert(imagem)
-    imagem = ImageOps.expand(imagem, border=MARGEM, fill=255 if (limiar or inverter) else 0)
+    imagem = ImageOps.expand(
+        imagem, border=MARGEM, fill=255 if (limiar or inverter) else 0
+    )
     return imagem.convert("RGB")
 
 
 def ler_linhas(imagem, inverter=False, ampliar=AMPLIAR, limiar=0):
-    resultado = winocr.recognize_pil_sync(preparar(imagem, inverter, ampliar, limiar), IDIOMA)
+    resultado = winocr.recognize_pil_sync(
+        preparar(imagem, inverter, ampliar, limiar), IDIOMA
+    )
     linhas = []
     for linha in resultado.get("lines", []):
-        primeira = linha["words"][0]["bounding_rect"] if linha.get("words") else {"x": MARGEM, "y": MARGEM}
-        linhas.append(Linha(linha["text"], (primeira["x"] - MARGEM) / ampliar, (primeira["y"] - MARGEM) / ampliar))
+        primeira = (
+            linha["words"][0]["bounding_rect"]
+            if linha.get("words")
+            else {"x": MARGEM, "y": MARGEM}
+        )
+        linhas.append(
+            Linha(
+                linha["text"],
+                (primeira["x"] - MARGEM) / ampliar,
+                (primeira["y"] - MARGEM) / ampliar,
+            )
+        )
     return linhas
 
 
 def ler_texto(imagem, inverter=False, ampliar=AMPLIAR, limiar=0):
-    return " ".join(linha.texto for linha in ler_linhas(imagem, inverter, ampliar, limiar))
+    return " ".join(
+        linha.texto for linha in ler_linhas(imagem, inverter, ampliar, limiar)
+    )

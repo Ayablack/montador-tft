@@ -8,8 +8,16 @@ from logica import itens as modulo_itens
 from logica import montador
 from visao import estado_compartilhado
 
-CLASSE_ORIGEM = {"Algoritmo": "origem-algoritmo", "Meta": "origem-meta", "Minhas comps": "origem-minhas"}
-ROTULO_ORIGEM = {"Algoritmo": "Para você", "Meta": "🏆 Meta", "Minhas comps": "📌 Minha"}
+CLASSE_ORIGEM = {
+    "Algoritmo": "origem-algoritmo",
+    "Meta": "origem-meta",
+    "Minhas comps": "origem-minhas",
+}
+ROTULO_ORIGEM = {
+    "Algoritmo": "Para você",
+    "Meta": "🏆 Meta",
+    "Minhas comps": "📌 Minha",
+}
 CLASSE_STATUS = {"Pode montar": "pode", "Falta 1 componente": "falta1"}
 
 
@@ -35,9 +43,13 @@ def _tracos(comp):
     for traco in comp.tracos:
         if traco.ativo:
             fundo, texto = CORES_ESTILO.get(traco.estilo, ("#666", "#fff"))
-            selos.append(f'<span class="traco" style="background:{fundo}; color:{texto}">{escape(traco.texto())}</span>')
+            selos.append(
+                f'<span class="traco" style="background:{fundo}; color:{texto}">{escape(traco.texto())}</span>'
+            )
         elif traco.faltam == 1:
-            selos.append(f'<span class="traco quase" title="falta 1 para ativar">{escape(traco.texto())}</span>')
+            selos.append(
+                f'<span class="traco quase" title="falta 1 para ativar">{escape(traco.texto())}</span>'
+            )
     return f'<div class="tracos">{"".join(selos)}</div>'
 
 
@@ -53,7 +65,9 @@ def _itens(comp, catalogo, componentes):
             f'<div class="bola {CLASSE_STATUS.get(s.status, "falta2")}"></div></div>'
             for s in sugestoes
         )
-        linhas.append(f'<div class="itens-linha"><b>{escape(carry.nome)}</b> {icones}</div>')
+        linhas.append(
+            f'<div class="itens-linha"><b>{escape(carry.nome)}</b> {icones}</div>'
+        )
     if not linhas:
         return ""
     legenda = '<div class="legenda">🟢 dá para montar · 🟡 falta 1 componente · ⚪ faltam 2</div>'
@@ -63,7 +77,9 @@ def _itens(comp, catalogo, componentes):
 def _numeros(comp):
     e = comp.estatisticas
     if not e.get("jogos"):
-        return f'<div class="numeros">{escape(e["notas"])}</div>' if e.get("notas") else ""
+        return (
+            f'<div class="numeros">{escape(e["notas"])}</div>' if e.get("notas") else ""
+        )
     itens = ", ".join(e.get("itens_do_carry", []))
     return (
         '<div class="numeros">'
@@ -71,7 +87,11 @@ def _numeros(comp):
         f'<span>Top 4 <b>{e["top4"]:.0%}</b></span>'
         f'<span>Vitória <b>{e["vitoria"]:.0%}</b></span>'
         f'<span><b>{e["jogos"]}</b> jogos</span>'
-        + (f'<span>Itens no {escape(e["carry"])}: {escape(itens)}</span>' if itens else "")
+        + (
+            f'<span>Itens no {escape(e["carry"])}: {escape(itens)}</span>'
+            if itens
+            else ""
+        )
         + "</div>"
     )
 
@@ -82,7 +102,11 @@ def _plano(comp):
     if not plano:
         return ""
     essenciais = comp.estatisticas.get("essenciais") or []
-    centrais = f'<div class="essenciais">Peças centrais: {escape(", ".join(essenciais))}</div>' if essenciais else ""
+    centrais = (
+        f'<div class="essenciais">Peças centrais: {escape(", ".join(essenciais))}</div>'
+        if essenciais
+        else ""
+    )
     return f'<div class="plano">🧭 <b>{escape(plano.estilo)}</b> · {escape(plano.texto)}{centrais}</div>'
 
 
@@ -107,13 +131,18 @@ def html_da_comp(comp, situacao, catalogo, componentes):
 
 def html_da_loja(loja, selos):
     """Faixa '🛒 Loja agora': as 5 cartas com o selo de cada uma (COMPRE, SOBE ★ ou nada)."""
-    classes = {estado_compartilhado.SELO_COMPRE: "compre", estado_compartilhado.SELO_SOBE: "sobe"}
+    classes = {
+        estado_compartilhado.SELO_COMPRE: "compre",
+        estado_compartilhado.SELO_SOBE: "sobe",
+    }
     cartas = []
     for campeao, selo in zip(loja, selos):
         if campeao is None:
             cartas.append('<div class="carta-loja vazia"></div>')
             continue
-        etiqueta = f'<span class="selo-loja {classes[selo]}">{selo}</span>' if selo else ""
+        etiqueta = (
+            f'<span class="selo-loja {classes[selo]}">{selo}</span>' if selo else ""
+        )
         cor = CORES_CUSTO.get(campeao.custo, "#888")
         cartas.append(
             f'<div class="carta-loja{" destaque" if selo else ""}" style="--cor:{cor}">'
@@ -128,6 +157,7 @@ def html_das_dicas(dicas):
     if not dicas:
         return ""
     linhas = "".join(
-        f'<div class="dica{" urgente" if d.urgente else ""}">{d.icone} {escape(d.texto)}</div>' for d in dicas
+        f'<div class="dica{" urgente" if d.urgente else ""}">{d.icone} {escape(d.texto)}</div>'
+        for d in dicas
     )
     return f'<div class="dicas"><b>💡 Agora</b>{linhas}</div>'

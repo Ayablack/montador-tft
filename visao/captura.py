@@ -38,4 +38,11 @@ def recortar(imagem, regiao):
     """regiao = (x0, y0, x1, y1) em frações da largura/altura."""
     largura, altura = imagem.size
     x0, y0, x1, y1 = regiao
-    return imagem.crop((round(x0 * largura), round(y0 * altura), round(x1 * largura), round(y1 * altura)))
+    return imagem.crop(
+        (
+            round(x0 * largura),
+            round(y0 * altura),
+            round(x1 * largura),
+            round(y1 * altura),
+        )
+    )

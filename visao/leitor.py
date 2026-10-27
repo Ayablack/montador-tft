@@ -12,23 +12,27 @@ from logica.tradutor import Tradutor
 from visao import ocr, regioes
 from visao.captura import recortar
 
-TAMANHO_COMPARACAO = 40     # px; ícones são comparados nesse tamanho
-SEMELHANCA_MINIMA = 0.55    # abaixo disso, o ícone do banco não é considerado reconhecido
-BRILHO_DE_VAZIO = 18        # quadrado de item quase preto = vazio
-SATURACAO_DE_ATIVO = 60     # hexágono do traço colorido (bronze/prata/ouro) = traço ativo; cinza ~10
+TAMANHO_COMPARACAO = 40  # px; ícones são comparados nesse tamanho
+SEMELHANCA_MINIMA = 0.55  # abaixo disso, o ícone do banco não é considerado reconhecido
+BRILHO_DE_VAZIO = 18  # quadrado de item quase preto = vazio
+SATURACAO_DE_ATIVO = (
+    60  # hexágono do traço colorido (bronze/prata/ouro) = traço ativo; cinza ~10
+)
 TIPOS_NO_BANCO = ("Componente", "Completo", "Emblema", "Radiante", "Artefato")
 
 
 @dataclass
 class LeituraDaTela:
     nivel: int | None = None
-    xp: tuple | None = None                            # (XP atual, XP para subir), ex.: (2, 56)
-    estagio: tuple | None = None                       # (estágio, rodada), ex.: (4, 3)
+    xp: tuple | None = None  # (XP atual, XP para subir), ex.: (2, 56)
+    estagio: tuple | None = None  # (estágio, rodada), ex.: (4, 3)
     ouro: int | None = None
-    loja: list = field(default_factory=list)          # 5 posições: Campeao ou None (vazia/comprada)
-    tracos: dict = field(default_factory=dict)        # traco_id -> quantidade (do painel)
-    itens: Counter = field(default_factory=Counter)   # item_id -> quantidade no banco
-    textos_crus: dict = field(default_factory=dict)   # o que o OCR leu, para conferir
+    loja: list = field(
+        default_factory=list
+    )  # 5 posições: Campeao ou None (vazia/comprada)
+    tracos: dict = field(default_factory=dict)  # traco_id -> quantidade (do painel)
+    itens: Counter = field(default_factory=Counter)  # item_id -> quantidade no banco
+    textos_crus: dict = field(default_factory=dict)  # o que o OCR leu, para conferir
 
 
 def _recorte(imagem, caixa):
@@ -51,8 +55,14 @@ class Leitor:
         for item in self.catalogo.itens.values():
             caminho = cdragon.caminho_do_icone("item", item.chave)
             if item.tipo in TIPOS_NO_BANCO and caminho:
-                icone = cv2.imdecode(np.fromfile(str(caminho), dtype=np.uint8), cv2.IMREAD_COLOR)
-                modelos[item.id] = cv2.resize(icone, (TAMANHO_COMPARACAO, TAMANHO_COMPARACAO), interpolation=cv2.INTER_AREA)
+                icone = cv2.imdecode(
+                    np.fromfile(str(caminho), dtype=np.uint8), cv2.IMREAD_COLOR
+                )
+                modelos[item.id] = cv2.resize(
+                    icone,
+                    (TAMANHO_COMPARACAO, TAMANHO_COMPARACAO),
+                    interpolation=cv2.INTER_AREA,
+                )
         return modelos
 
     # ------------------------------------------------------------ partes do HUD
@@ -69,9 +79,17 @@ class Leitor:
         if escrito:
             return texto, int(escrito.group(1)), xp
         if xp:
-            niveis = [nivel for nivel, total in self.catalogo.xp_para_subir.items() if total == xp[1]]
+            niveis = [
+                nivel
+                for nivel, total in self.catalogo.xp_para_subir.items()
+                if total == xp[1]
+            ]
             if niveis:
-                return texto, min(niveis), xp  # se dois níveis pedem o mesmo XP, fica o menor
+                return (
+                    texto,
+                    min(niveis),
+                    xp,
+                )  # se dois níveis pedem o mesmo XP, fica o menor
         return texto, None, xp
 
     TENTATIVAS_ESTAGIO = [(3, 0), (2, 0), (2, 120)]
@@ -117,9 +135,14 @@ class Leitor:
         (traço inativo: o primeiro número é a quantidade) ou o primeiro breakpoint.
         """
         textos, tracos, linhas_vazias = [], {}, 0
-        for caixa, hexagono in zip(regioes.caixas_dos_tracos(), regioes.caixas_dos_hexagonos()):
+        for caixa, hexagono in zip(
+            regioes.caixas_dos_tracos(), regioes.caixas_dos_hexagonos()
+        ):
             recorte = _recorte(imagem, caixa)
-            ativo = np.asarray(_recorte(imagem, hexagono).convert("HSV"))[:, :, 1].mean() > SATURACAO_DE_ATIVO
+            ativo = (
+                np.asarray(_recorte(imagem, hexagono).convert("HSV"))[:, :, 1].mean()
+                > SATURACAO_DE_ATIVO
+            )
             traco, quantidade = None, None
             for ampliar, limiar in self.TENTATIVAS_TRACO:
                 texto = ocr.ler_texto(recorte, ampliar=ampliar, limiar=limiar)
@@ -143,17 +166,18 @@ class Leitor:
     def _quantidade_do_traco(texto, nome, traco, ativo):
         """O número fica numa caixinha antes do nome. Depois do nome vêm os breakpoints
         ('2 > 3 > 4') ou, se o traço está inativo, 'quantidade/próximo' ('1/2')."""
+
         def com_uns(trecho):  # a fonte do jogo desenha o 1 parecido com um I
             return re.sub(r"[Il|!]", "1", trecho)
 
         primeiro_nivel = traco.niveis[0] if traco.niveis else 1
-        antes = re.search(r"(\d+)\s*$", com_uns(texto[:nome.start()]))
+        antes = re.search(r"(\d+)\s*$", com_uns(texto[: nome.start()]))
         numero_antes = int(antes.group(1)) if antes else None
         if ativo:
             if numero_antes and numero_antes >= primeiro_nivel:
                 return numero_antes
             return primeiro_nivel  # sem o número: pelo menos o primeiro breakpoint
-        depois = re.search(r"\d", com_uns(texto[nome.end():]))
+        depois = re.search(r"\d", com_uns(texto[nome.end() :]))
         for candidato in (numero_antes, int(depois.group()) if depois else None):
             if candidato and candidato < primeiro_nivel:
                 return candidato
@@ -162,19 +186,29 @@ class Leitor:
     def ler_itens(self, imagem):
         itens, detalhes = Counter(), []
         for caixa in regioes.caixas_dos_itens():
-            pedaco = np.asarray(_recorte(imagem, caixa))[:, :, ::-1]  # PIL (RGB) -> OpenCV (BGR)
+            pedaco = np.asarray(_recorte(imagem, caixa))[
+                :, :, ::-1
+            ]  # PIL (RGB) -> OpenCV (BGR)
             if pedaco.mean() < BRILHO_DE_VAZIO:
                 detalhes.append("vazio")
                 continue
-            pedaco = cv2.resize(pedaco, (TAMANHO_COMPARACAO, TAMANHO_COMPARACAO), interpolation=cv2.INTER_AREA)
+            pedaco = cv2.resize(
+                pedaco,
+                (TAMANHO_COMPARACAO, TAMANHO_COMPARACAO),
+                interpolation=cv2.INTER_AREA,
+            )
             melhor_id, melhor_nota = None, -1.0
             for id_item, modelo in self.modelos.items():
-                nota = float(cv2.matchTemplate(pedaco, modelo, cv2.TM_CCOEFF_NORMED)[0][0])
+                nota = float(
+                    cv2.matchTemplate(pedaco, modelo, cv2.TM_CCOEFF_NORMED)[0][0]
+                )
                 if nota > melhor_nota:
                     melhor_id, melhor_nota = id_item, nota
             if melhor_nota >= SEMELHANCA_MINIMA:
                 itens[melhor_id] += 1
-                detalhes.append(f"{self.catalogo.itens[melhor_id].nome} ({melhor_nota:.2f})")
+                detalhes.append(
+                    f"{self.catalogo.itens[melhor_id].nome} ({melhor_nota:.2f})"
+                )
             else:
                 detalhes.append(f"? ({melhor_nota:.2f})")
         return detalhes, itens
@@ -190,7 +224,11 @@ class Leitor:
         textos_tracos, leitura.tracos = self.ler_tracos(imagem)
         detalhes_itens, leitura.itens = self.ler_itens(imagem)
         leitura.textos_crus = {
-            "nivel": texto_nivel, "estagio": texto_estagio, "ouro": texto_ouro, "loja": textos_loja,
-            "tracos": textos_tracos, "itens": detalhes_itens,
+            "nivel": texto_nivel,
+            "estagio": texto_estagio,
+            "ouro": texto_ouro,
+            "loja": textos_loja,
+            "tracos": textos_tracos,
+            "itens": detalhes_itens,
         }
         return leitura

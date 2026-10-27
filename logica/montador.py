@@ -18,41 +18,48 @@ from logica.tracos import situacao_do_traco, tracos_do_time
 # ---------------------------------------------------------------- pesos
 
 PONTOS_POR_ESTILO = {1: 1.0, 2: 2.0, 3: 3.5, 4: 5.0}  # bronze, prata, ouro, prismático
-PONTOS_TRACO_UNICO = 0.5        # traços de um campeão só ativam sozinhos, valem pouco
-PESO_PROGRESSO = 0.4            # crédito parcial por estar perto do próximo nível
-BONUS_JA_TEM = 1.5              # por campeão que você já tem
-BONUS_POR_ESTRELA = 0.75        # extra por estrela acima de 1★
-PONTOS_POR_CUSTO = 0.15         # campeões mais caros são mais fortes
-PENALIDADE_FALTANDO = 0.5       # base por campeão que falta comprar
-PENALIDADE_RARIDADE = 2.0       # extra para custos que aparecem pouco na loja no seu nível
-PENALIDADE_INDISPONIVEL = 3.0   # campeão que ainda não aparece na loja no seu nível
-PESO_DADOS_CAMPEAO = 0.8        # x impacto do campeão no alto elo (posições acima da média)
-PESO_DADOS_TRACO = 1.0          # x impacto do traço naquele nível no alto elo
+PONTOS_TRACO_UNICO = 0.5  # traços de um campeão só ativam sozinhos, valem pouco
+PESO_PROGRESSO = 0.4  # crédito parcial por estar perto do próximo nível
+BONUS_JA_TEM = 1.5  # por campeão que você já tem
+BONUS_POR_ESTRELA = 0.75  # extra por estrela acima de 1★
+PONTOS_POR_CUSTO = 0.15  # campeões mais caros são mais fortes
+PENALIDADE_FALTANDO = 0.5  # base por campeão que falta comprar
+PENALIDADE_RARIDADE = 2.0  # extra para custos que aparecem pouco na loja no seu nível
+PENALIDADE_INDISPONIVEL = 3.0  # campeão que ainda não aparece na loja no seu nível
+PESO_DADOS_CAMPEAO = 0.8  # x impacto do campeão no alto elo (posições acima da média)
+PESO_DADOS_TRACO = 1.0  # x impacto do traço naquele nível no alto elo
 
 LARGURA_DO_FEIXE = 60
-PENALIDADE_REPETIDO = 1.2       # para variar: campeão (que você não tem) já usado numa sugestão anterior
-DIFERENCA_MINIMA = 2            # comps sugeridas precisam diferir em pelo menos 2 campeões
+PENALIDADE_REPETIDO = (
+    1.2  # para variar: campeão (que você não tem) já usado numa sugestão anterior
+)
+DIFERENCA_MINIMA = 2  # comps sugeridas precisam diferir em pelo menos 2 campeões
 
 
 @dataclass
 class Situacao:
     """O que o jogador tem agora."""
+
     nivel: int
-    unidades: dict = field(default_factory=dict)   # campeao_id -> estrelas
-    emblemas: list = field(default_factory=list)   # ids dos traços dos emblemas que tem
-    fixos: list = field(default_factory=list)      # campeões que quer obrigatoriamente no time
+    unidades: dict = field(default_factory=dict)  # campeao_id -> estrelas
+    emblemas: list = field(default_factory=list)  # ids dos traços dos emblemas que tem
+    fixos: list = field(
+        default_factory=list
+    )  # campeões que quer obrigatoriamente no time
 
 
 @dataclass
 class CompAvaliada:
     nome: str
     campeoes: list
-    tracos: list          # TracoNoTime
+    tracos: list  # TracoNoTime
     pontuacao: float
-    tem: list             # campeões que você já tem
-    faltam: list          # campeões que faltam comprar
+    tem: list  # campeões que você já tem
+    faltam: list  # campeões que faltam comprar
     origem: str = "Algoritmo"
-    estatisticas: dict = field(default_factory=dict)  # comps meta: colocação média, plano de jogo etc.
+    estatisticas: dict = field(
+        default_factory=dict
+    )  # comps meta: colocação média, plano de jogo etc.
 
     @property
     def porcentagem_que_tem(self):
@@ -60,6 +67,7 @@ class CompAvaliada:
 
 
 # ---------------------------------------------------------------- nota de um time
+
 
 class _Notas:
     """Pontos de cada campeão e de cada traço, calculados uma vez por situação.
@@ -69,7 +77,9 @@ class _Notas:
 
     def __init__(self, situacao, catalogo):
         self.situacao, self.catalogo = situacao, catalogo
-        self.do_campeao = {id_: self._campeao(c) for id_, c in catalogo.campeoes.items()}
+        self.do_campeao = {
+            id_: self._campeao(c) for id_, c in catalogo.campeoes.items()
+        }
         self._dos_tracos = {}
 
     def _campeao(self, campeao):
@@ -99,11 +109,22 @@ class _Notas:
         situacao = situacao_do_traco(traco, quantidade)
         pontos = 0.0
         if situacao.ativo:
-            pontos += PONTOS_TRACO_UNICO if traco.unico else PONTOS_POR_ESTILO.get(situacao.estilo, 1.0)
-            pontos += PESO_DADOS_TRACO * self.catalogo.impacto_dos_tracos.get((traco.id, situacao.nivel_ativo), 0.0)
+            pontos += (
+                PONTOS_TRACO_UNICO
+                if traco.unico
+                else PONTOS_POR_ESTILO.get(situacao.estilo, 1.0)
+            )
+            pontos += PESO_DADOS_TRACO * self.catalogo.impacto_dos_tracos.get(
+                (traco.id, situacao.nivel_ativo), 0.0
+            )
         if situacao.proximo_nivel:
             estilo_seguinte = traco.estilos[traco.niveis.index(situacao.proximo_nivel)]
-            pontos += PESO_PROGRESSO * PONTOS_POR_ESTILO.get(estilo_seguinte, 1.0) * quantidade / situacao.proximo_nivel
+            pontos += (
+                PESO_PROGRESSO
+                * PONTOS_POR_ESTILO.get(estilo_seguinte, 1.0)
+                * quantidade
+                / situacao.proximo_nivel
+            )
         return pontos
 
     def contagem(self, ids):
@@ -115,7 +136,9 @@ class _Notas:
 
     def do_time(self, ids):
         contagem = self.contagem(ids)
-        return sum(self.do_campeao[i] for i in set(ids)) + sum(self.traco(t, q) for t, q in contagem.items())
+        return sum(self.do_campeao[i] for i in set(ids)) + sum(
+            self.traco(t, q) for t, q in contagem.items()
+        )
 
     def ganho(self, contagem, id_campeao):
         """Quanto a nota sobe ao colocar o campeão num time com essa contagem de traços."""
@@ -151,6 +174,7 @@ def avaliar(campeoes, situacao, catalogo, nome=None, origem="Algoritmo", notas=N
 
 # ---------------------------------------------------------------- busca
 
+
 def _buscar_time(notas, tamanho, ja_usados):
     """Uma busca em feixe. Devolve os times finais, do melhor pro pior.
 
@@ -161,9 +185,19 @@ def _buscar_time(notas, tamanho, ja_usados):
     fixos = frozenset(i for i in situacao.fixos if i in campeoes)
 
     def penalidade(id_campeao):
-        return PENALIDADE_REPETIDO if id_campeao in ja_usados and id_campeao not in situacao.unidades else 0.0
+        return (
+            PENALIDADE_REPETIDO
+            if id_campeao in ja_usados and id_campeao not in situacao.unidades
+            else 0.0
+        )
 
-    feixe = [(fixos, notas.contagem(fixos), notas.do_time(fixos) - sum(map(penalidade, fixos)))]
+    feixe = [
+        (
+            fixos,
+            notas.contagem(fixos),
+            notas.do_time(fixos) - sum(map(penalidade, fixos)),
+        )
+    ]
     for _passo in range(tamanho - len(fixos)):
         candidatos = {}
         for time, contagem, nota in feixe:
@@ -172,9 +206,16 @@ def _buscar_time(notas, tamanho, ja_usados):
                     continue
                 novo = time | {id_campeao}
                 if novo not in candidatos:
-                    candidatos[novo] = (nota + notas.ganho(contagem, id_campeao) - penalidade(id_campeao),
-                                        contagem, id_campeao)
-        melhores = sorted(candidatos.items(), key=lambda item: item[1][0], reverse=True)[:LARGURA_DO_FEIXE]
+                    candidatos[novo] = (
+                        nota
+                        + notas.ganho(contagem, id_campeao)
+                        - penalidade(id_campeao),
+                        contagem,
+                        id_campeao,
+                    )
+        melhores = sorted(
+            candidatos.items(), key=lambda item: item[1][0], reverse=True
+        )[:LARGURA_DO_FEIXE]
         feixe = []
         for time, (nota, contagem, id_campeao) in melhores:
             nova_contagem = Counter(contagem)
@@ -199,17 +240,26 @@ def sugerir_comps(situacao, catalogo, quantidade=5, tamanho=None):
                 ja_usados |= time
                 break
 
-    comps = [avaliar([catalogo.campeoes[i] for i in time], situacao, catalogo, notas=notas) for time in escolhidos]
+    comps = [
+        avaliar([catalogo.campeoes[i] for i in time], situacao, catalogo, notas=notas)
+        for time in escolhidos
+    ]
     return sorted(comps, key=lambda comp: comp.pontuacao, reverse=True)
 
 
 def copias_que_voce_tem(campeao, situacao):
-    return copias_por_estrela(situacao.unidades[campeao.id]) if campeao.id in situacao.unidades else 0
+    return (
+        copias_por_estrela(situacao.unidades[campeao.id])
+        if campeao.id in situacao.unidades
+        else 0
+    )
 
 
 def chance_dos_que_faltam(comp, situacao, catalogo):
     """Para cada campeão que falta: chance de vê-lo numa loja no seu nível."""
     return {
-        c.id: chance_na_loja(c, situacao.nivel, catalogo, copias_suas=copias_que_voce_tem(c, situacao))
+        c.id: chance_na_loja(
+            c, situacao.nivel, catalogo, copias_suas=copias_que_voce_tem(c, situacao)
+        )
         for c in comp.faltam
     }

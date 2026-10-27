@@ -15,10 +15,10 @@ from pathlib import Path
 import requests
 
 ARQUIVO_ENV = Path(__file__).parent.parent / ".env"
-PLATAFORMA = "br1"         # servidor do Brasil (ranking, jogadores)
-REGIAO = "americas"        # rota regional usada pelas partidas do BR
-FILA_RANQUEADA = 1100      # queue_id das partidas ranqueadas de TFT
-INTERVALO = 1.25           # segundos entre pedidos (fica abaixo de 100 a cada 2 min)
+PLATAFORMA = "br1"  # servidor do Brasil (ranking, jogadores)
+REGIAO = "americas"  # rota regional usada pelas partidas do BR
+FILA_RANQUEADA = 1100  # queue_id das partidas ranqueadas de TFT
+INTERVALO = 1.25  # segundos entre pedidos (fica abaixo de 100 a cada 2 min)
 TIMEOUT = 30
 
 
@@ -54,16 +54,22 @@ class ClienteRiot:
             self.ultimo_pedido = time.time()
             resposta = self.sessao.get(url, params=parametros, timeout=TIMEOUT)
 
-            if resposta.status_code == 429:  # passou do limite: a Riot diz quanto esperar
+            if (
+                resposta.status_code == 429
+            ):  # passou do limite: a Riot diz quanto esperar
                 time.sleep(int(resposta.headers.get("Retry-After", 10)))
                 continue
             if resposta.status_code in (401, 403):
-                raise ErroRiot("Chave da Riot inválida ou expirada. Gere outra em developer.riotgames.com.")
+                raise ErroRiot(
+                    "Chave da Riot inválida ou expirada. Gere outra em developer.riotgames.com."
+                )
             if resposta.status_code == 404:
                 return None
             resposta.raise_for_status()
             return resposta.json()
-        raise ErroRiot("A Riot recusou os pedidos várias vezes seguidas (limite de uso). Tente mais tarde.")
+        raise ErroRiot(
+            "A Riot recusou os pedidos várias vezes seguidas (limite de uso). Tente mais tarde."
+        )
 
     def jogadores_alto_elo(self):
         """puuids dos jogadores Challenger e Grão-Mestre do BR, do maior PL para o menor."""
@@ -79,7 +85,9 @@ class ClienteRiot:
         puuids = []
         for entrada in entradas:
             puuid = entrada.get("puuid")
-            if not puuid and entrada.get("summonerId"):  # respostas antigas não traziam o puuid
+            if not puuid and entrada.get(
+                "summonerId"
+            ):  # respostas antigas não traziam o puuid
                 invocador = self._get(
                     f"https://{PLATAFORMA}.api.riotgames.com/tft/summoner/v1/summoners/{entrada['summonerId']}"
                 )
@@ -89,13 +97,18 @@ class ClienteRiot:
         return puuids
 
     def ids_partidas(self, puuid, quantidade):
-        return self._get(
-            f"https://{REGIAO}.api.riotgames.com/tft/match/v1/matches/by-puuid/{puuid}/ids",
-            {"count": quantidade},
-        ) or []
+        return (
+            self._get(
+                f"https://{REGIAO}.api.riotgames.com/tft/match/v1/matches/by-puuid/{puuid}/ids",
+                {"count": quantidade},
+            )
+            or []
+        )
 
     def partida(self, match_id):
-        return self._get(f"https://{REGIAO}.api.riotgames.com/tft/match/v1/matches/{match_id}")
+        return self._get(
+            f"https://{REGIAO}.api.riotgames.com/tft/match/v1/matches/{match_id}"
+        )
 
 
 def _salvar_partida(conexao, partida):
@@ -103,28 +116,54 @@ def _salvar_partida(conexao, partida):
     match_id = partida["metadata"]["match_id"]
     conexao.execute(
         "INSERT OR REPLACE INTO partidas VALUES (?,?,?,?,?,?)",
-        (match_id, info.get("game_datetime"), info.get("game_version"),
-         info.get("tft_set_number"), info.get("queue_id"), info.get("game_length")),
+        (
+            match_id,
+            info.get("game_datetime"),
+            info.get("game_version"),
+            info.get("tft_set_number"),
+            info.get("queue_id"),
+            info.get("game_length"),
+        ),
     )
     for jogador in info.get("participants", []):
         unidades = [
-            {"id": u.get("character_id"), "estrelas": u.get("tier"), "itens": u.get("itemNames", [])}
+            {
+                "id": u.get("character_id"),
+                "estrelas": u.get("tier"),
+                "itens": u.get("itemNames", []),
+            }
             for u in jogador.get("units", [])
         ]
         tracos = [
-            {"id": t.get("name"), "unidades": t.get("num_units"), "estilo": t.get("style"), "tier": t.get("tier_current")}
+            {
+                "id": t.get("name"),
+                "unidades": t.get("num_units"),
+                "estilo": t.get("style"),
+                "tier": t.get("tier_current"),
+            }
             for t in jogador.get("traits", [])
         ]
         conexao.execute(
             "INSERT OR REPLACE INTO participacoes VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (match_id, jogador.get("puuid"), jogador.get("placement"), jogador.get("level"),
-             jogador.get("gold_left"), jogador.get("last_round"), jogador.get("time_eliminated"),
-             json.dumps(unidades), json.dumps(tracos), json.dumps(jogador.get("augments", []))),
+            (
+                match_id,
+                jogador.get("puuid"),
+                jogador.get("placement"),
+                jogador.get("level"),
+                jogador.get("gold_left"),
+                jogador.get("last_round"),
+                jogador.get("time_eliminated"),
+                json.dumps(unidades),
+                json.dumps(tracos),
+                json.dumps(jogador.get("augments", [])),
+            ),
         )
     conexao.commit()
 
 
-def coletar_partidas(conexao, chave, jogadores=60, partidas_por_jogador=20, progresso=print):
+def coletar_partidas(
+    conexao, chave, jogadores=60, partidas_por_jogador=20, progresso=print
+):
     """Baixa as partidas ranqueadas mais recentes dos melhores jogadores do BR.
 
     Com os valores padrão são uns 700 a 900 pedidos: 15 a 20 minutos com a chave gratuita.
@@ -149,6 +188,8 @@ def coletar_partidas(conexao, chave, jogadores=60, partidas_por_jogador=20, prog
     for numero, match_id in enumerate(novas, start=1):
         progresso(f"Baixando partida {numero}/{len(novas)}...")
         partida = cliente.partida(match_id)
-        if partida:  # salva todas (para não baixar de novo); a análise usa só as ranqueadas
+        if (
+            partida
+        ):  # salva todas (para não baixar de novo); a análise usa só as ranqueadas
             _salvar_partida(conexao, partida)
     return len(novas)

@@ -18,32 +18,70 @@ from visao import estado_compartilhado, regioes
 from visao.captura import monitor_do_jogo
 
 ATUALIZAR_A_CADA_MS = 1000
-COR_INVISIVEL = "#010203"      # o que for desta cor fica transparente
+COR_INVISIVEL = "#010203"  # o que for desta cor fica transparente
 OPACIDADE = 0.93
-PAINEL_X, PAINEL_Y, PAINEL_LARGURA = 60, 70, 600  # canto de cima à esquerda, acima dos traços (pixels de 2560x1440)
+PAINEL_X, PAINEL_Y, PAINEL_LARGURA = (
+    60,
+    70,
+    600,
+)  # canto de cima à esquerda, acima dos traços (pixels de 2560x1440)
 PAINEL_Y_MAXIMO = 330  # daqui para baixo fica o painel de traços, que a leitura da tela precisa enxergar
 # se o painel não couber, vai tirando partes nesta ordem: (mostra traços, mostra itens, quantas dicas)
-VERSOES_DO_PAINEL = [(True, True, 2), (False, True, 2), (False, False, 2), (False, False, 1)]
+VERSOES_DO_PAINEL = [
+    (True, True, 2),
+    (False, True, 2),
+    (False, False, 2),
+    (False, False, 1),
+]
 FONTE = "Segoe UI"
 
-COR_FUNDO, COR_BORDA, COR_TEXTO, COR_APAGADO = "#14171f", "#e8b941", "#f2f2f2", "#8a93a3"
+COR_FUNDO, COR_BORDA, COR_TEXTO, COR_APAGADO = (
+    "#14171f",
+    "#e8b941",
+    "#f2f2f2",
+    "#8a93a3",
+)
 COR_DICA = "#7fe3a0"
-COR_SELO = {estado_compartilhado.SELO_COMPRE: "#2fb35a", estado_compartilhado.SELO_SOBE: "#e8b941"}
-COR_TRACO = {1: ("#8c5a3c", "#fff"), 2: ("#aebdca", "#17202a"), 3: ("#e8b941", "#2a1d00"), 4: ("#d9b8ff", "#1b1b2a")}
-COR_ITEM = {"Pode montar": ("#2fb35a", "#fff"), "Falta 1 componente": ("#c9a227", "#2a1d00")}
+COR_SELO = {
+    estado_compartilhado.SELO_COMPRE: "#2fb35a",
+    estado_compartilhado.SELO_SOBE: "#e8b941",
+}
+COR_TRACO = {
+    1: ("#8c5a3c", "#fff"),
+    2: ("#aebdca", "#17202a"),
+    3: ("#e8b941", "#2a1d00"),
+    4: ("#d9b8ff", "#1b1b2a"),
+}
+COR_ITEM = {
+    "Pode montar": ("#2fb35a", "#fff"),
+    "Falta 1 componente": ("#c9a227", "#2a1d00"),
+}
 
 
 # ---------------------------------------------------------------- Windows
 
+
 def deixar_clique_passar(janela):
     """Marca a janela como 'transparente para o mouse' e fora da barra de tarefas/Alt+Tab."""
     GWL_EXSTYLE = -20
-    WS_EX_LAYERED, WS_EX_TRANSPARENT, WS_EX_TOOLWINDOW, WS_EX_NOACTIVATE = 0x80000, 0x20, 0x80, 0x08000000
+    WS_EX_LAYERED, WS_EX_TRANSPARENT, WS_EX_TOOLWINDOW, WS_EX_NOACTIVATE = (
+        0x80000,
+        0x20,
+        0x80,
+        0x08000000,
+    )
     usuario = ctypes.windll.user32
     hwnd = usuario.GetParent(janela.winfo_id())
     estilo = usuario.GetWindowLongW(hwnd, GWL_EXSTYLE)
-    usuario.SetWindowLongW(hwnd, GWL_EXSTYLE,
-                           estilo | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE)
+    usuario.SetWindowLongW(
+        hwnd,
+        GWL_EXSTYLE,
+        estilo
+        | WS_EX_LAYERED
+        | WS_EX_TRANSPARENT
+        | WS_EX_TOOLWINDOW
+        | WS_EX_NOACTIVATE,
+    )
 
 
 def processo_vivo(pid):
@@ -60,6 +98,7 @@ def processo_vivo(pid):
 
 
 # ---------------------------------------------------------------- desenho
+
 
 class Overlay:
     def __init__(self, raiz, monitor, pid_do_app=None):
@@ -86,7 +125,9 @@ class Overlay:
             self.desenhar_loja(dados.get("loja", []))
             if dados.get("comp"):
                 self.desenhar_painel(dados["comp"], dados.get("dicas", []))
-        self.raiz.attributes("-topmost", True)  # o jogo às vezes "rouba" o topo ao ganhar foco
+        self.raiz.attributes(
+            "-topmost", True
+        )  # o jogo às vezes "rouba" o topo ao ganhar foco
         self.raiz.after(ATUALIZAR_A_CADA_MS, self.atualizar)
 
     def desenhar_loja(self, selos):
@@ -95,16 +136,30 @@ class Overlay:
                 continue
             cor = COR_SELO[selo]
             # moldura por fora da carta, para não tapar o nome que a leitura da tela usa
-            self.canvas.create_rectangle(self.px(x0 - 6), self.px(y0 - 4), self.px(x1 + 6), self.px(y1 + 2),
-                                         outline=cor, width=self.px(5))
-            self._chip(self.px(x0 + 8), self.px(y0 + 8), selo, cor, "#fff" if cor == "#2fb35a" else "#2a1d00",
-                       marca="loja")
+            self.canvas.create_rectangle(
+                self.px(x0 - 6),
+                self.px(y0 - 4),
+                self.px(x1 + 6),
+                self.px(y1 + 2),
+                outline=cor,
+                width=self.px(5),
+            )
+            self._chip(
+                self.px(x0 + 8),
+                self.px(y0 + 8),
+                selo,
+                cor,
+                "#fff" if cor == "#2fb35a" else "#2a1d00",
+                marca="loja",
+            )
 
     def desenhar_painel(self, comp, dicas=()):
         """Desenha a versão mais completa do painel que caiba acima do painel de traços do jogo."""
         for com_tracos, com_itens, quantas_dicas in VERSOES_DO_PAINEL:
             self.canvas.delete("painel")
-            baixo = self._painel(comp, list(dicas)[:quantas_dicas], com_tracos, com_itens)
+            baixo = self._painel(
+                comp, list(dicas)[:quantas_dicas], com_tracos, com_itens
+            )
             if baixo <= self.px(PAINEL_Y_MAXIMO):
                 return
 
@@ -113,55 +168,129 @@ class Overlay:
         x0, y0 = self.px(PAINEL_X), self.px(PAINEL_Y)
         x1 = x0 + self.px(PAINEL_LARGURA)
         margem = self.px(12)
-        fundo = self.canvas.create_rectangle(x0, y0, x1, y0, fill=COR_FUNDO, outline=COR_BORDA, width=self.px(2),
-                                             tags="painel")
+        fundo = self.canvas.create_rectangle(
+            x0,
+            y0,
+            x1,
+            y0,
+            fill=COR_FUNDO,
+            outline=COR_BORDA,
+            width=self.px(2),
+            tags="painel",
+        )
         x, y = x0 + margem, y0 + margem
 
-        titulo = self.canvas.create_text(x, y, text=comp["nome"], anchor="nw", fill=COR_TEXTO,
-                                         font=self.fonte_titulo, width=x1 - x - margem, tags="painel")
-        y = self.canvas.bbox(titulo)[3] + self.px(2)  # o nome pode quebrar em duas linhas
-        self.canvas.create_text(x, y, anchor="nw", fill=COR_APAGADO, font=self.fonte_pequena, tags="painel",
-                                text=f"{comp['origem']} · você tem {comp['tem']}/{comp['total']}")
+        titulo = self.canvas.create_text(
+            x,
+            y,
+            text=comp["nome"],
+            anchor="nw",
+            fill=COR_TEXTO,
+            font=self.fonte_titulo,
+            width=x1 - x - margem,
+            tags="painel",
+        )
+        y = self.canvas.bbox(titulo)[3] + self.px(
+            2
+        )  # o nome pode quebrar em duas linhas
+        self.canvas.create_text(
+            x,
+            y,
+            anchor="nw",
+            fill=COR_APAGADO,
+            font=self.fonte_pequena,
+            tags="painel",
+            text=f"{comp['origem']} · você tem {comp['tem']}/{comp['total']}",
+        )
         y += self.px(24)
 
         chips = []
         for campeao in comp["campeoes"]:
             cor = CORES_CUSTO.get(campeao["custo"], "#888")
             if campeao["estrelas"]:
-                chips.append((f"{campeao['nome']} {'★' * campeao['estrelas']}", cor, "#fff", None))
+                chips.append(
+                    (
+                        f"{campeao['nome']} {'★' * campeao['estrelas']}",
+                        cor,
+                        "#fff",
+                        None,
+                    )
+                )
             else:
                 chips.append((campeao["nome"], "#262b36", COR_APAGADO, cor))
         y = self._linha_de_chips(chips, x, x1 - margem, y)
 
-        tracos = [(t["texto"], *COR_TRACO.get(t["estilo"], ("#666", "#fff")), None) for t in comp["tracos"]]
+        tracos = [
+            (t["texto"], *COR_TRACO.get(t["estilo"], ("#666", "#fff")), None)
+            for t in comp["tracos"]
+        ]
         if tracos and com_tracos:
-            y = self._linha_de_chips(tracos, x, x1 - margem, y + self.px(4), fonte=self.fonte_pequena)
+            y = self._linha_de_chips(
+                tracos, x, x1 - margem, y + self.px(4), fonte=self.fonte_pequena
+            )
 
         if comp["itens"] and com_itens:
-            self.canvas.create_text(x, y + self.px(4), anchor="nw", fill=COR_APAGADO, font=self.fonte_pequena,
-                                    text=f"Itens para {comp['carry']}:", tags="painel")
-            itens = [(i["nome"], *COR_ITEM.get(i["status"], ("#262b36", COR_APAGADO)), None) for i in comp["itens"]]
-            y = self._linha_de_chips(itens, x, x1 - margem, y + self.px(26), fonte=self.fonte_pequena)
+            self.canvas.create_text(
+                x,
+                y + self.px(4),
+                anchor="nw",
+                fill=COR_APAGADO,
+                font=self.fonte_pequena,
+                text=f"Itens para {comp['carry']}:",
+                tags="painel",
+            )
+            itens = [
+                (i["nome"], *COR_ITEM.get(i["status"], ("#262b36", COR_APAGADO)), None)
+                for i in comp["itens"]
+            ]
+            y = self._linha_de_chips(
+                itens, x, x1 - margem, y + self.px(26), fonte=self.fonte_pequena
+            )
 
         for dica in dicas:  # dicas do momento: subir de nível, rolar, juros
-            texto = self.canvas.create_text(x, y + self.px(4), anchor="nw", fill=COR_DICA, font=self.fonte_pequena,
-                                            text=f"• {dica}", width=x1 - x - margem, tags="painel")
+            texto = self.canvas.create_text(
+                x,
+                y + self.px(4),
+                anchor="nw",
+                fill=COR_DICA,
+                font=self.fonte_pequena,
+                text=f"• {dica}",
+                width=x1 - x - margem,
+                tags="painel",
+            )
             y = self.canvas.bbox(texto)[3] + self.px(2)
 
         baixo = y + margem - self.px(6)
         self.canvas.coords(fundo, x0, y0, x1, baixo)
         return baixo
 
-    def _chip(self, x, y, texto, fundo, cor_texto, borda=None, fonte=None, marca="painel"):
+    def _chip(
+        self, x, y, texto, fundo, cor_texto, borda=None, fonte=None, marca="painel"
+    ):
         """Etiqueta com fundo. Devolve (largura, altura). `marca` agrupa o desenho para apagar junto."""
         fonte = fonte or self.fonte
         folga_x, folga_y = self.px(8), self.px(3)
         largura = fonte.measure(texto) + 2 * folga_x
         altura = fonte.metrics("linespace") + 2 * folga_y
-        self.canvas.create_rectangle(x, y, x + largura, y + altura, fill=fundo, outline=borda or fundo,
-                                     width=self.px(2), tags=marca)
-        self.canvas.create_text(x + folga_x, y + folga_y, text=texto, anchor="nw", fill=cor_texto, font=fonte,
-                                tags=marca)
+        self.canvas.create_rectangle(
+            x,
+            y,
+            x + largura,
+            y + altura,
+            fill=fundo,
+            outline=borda or fundo,
+            width=self.px(2),
+            tags=marca,
+        )
+        self.canvas.create_text(
+            x + folga_x,
+            y + folga_y,
+            text=texto,
+            anchor="nw",
+            fill=cor_texto,
+            font=fonte,
+            tags=marca,
+        )
         return largura, altura
 
     def _linha_de_chips(self, chips, x_inicio, x_fim, y, fonte=None):
@@ -179,7 +308,9 @@ class Overlay:
 
 def main():
     try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(2)  # pixels reais, sem a escala do Windows
+        ctypes.windll.shcore.SetProcessDpiAwareness(
+            2
+        )  # pixels reais, sem a escala do Windows
     except (AttributeError, OSError):
         pass
     pid_do_app = int(sys.argv[1]) if len(sys.argv) > 1 else None
@@ -187,7 +318,9 @@ def main():
 
     raiz = tk.Tk()
     raiz.overrideredirect(True)  # sem borda nem barra de título
-    raiz.geometry(f"{monitor['width']}x{monitor['height']}+{monitor['left']}+{monitor['top']}")
+    raiz.geometry(
+        f"{monitor['width']}x{monitor['height']}+{monitor['left']}+{monitor['top']}"
+    )
     raiz.configure(bg=COR_INVISIVEL)
     raiz.attributes("-transparentcolor", COR_INVISIVEL)
     raiz.attributes("-alpha", OPACIDADE)

@@ -25,21 +25,32 @@ class Compra:
 
 @dataclass
 class Acompanhamento:
-    loja_anterior: list = field(default_factory=list)       # Campeao/None por posição
-    textos_anteriores: list = field(default_factory=list)   # texto lido em cada posição
+    loja_anterior: list = field(default_factory=list)  # Campeao/None por posição
+    textos_anteriores: list = field(default_factory=list)  # texto lido em cada posição
     ouro_anterior: int | None = None
 
     def detectar_compras(self, leitura):
         """Compara com a leitura anterior. Devolve a lista de compras detectadas."""
         compras = []
         loja_visivel = any(leitura.textos_crus.get("loja", []))
-        if self.loja_anterior and loja_visivel and self.ouro_anterior is not None and leitura.ouro is not None:
+        if (
+            self.loja_anterior
+            and loja_visivel
+            and self.ouro_anterior is not None
+            and leitura.ouro is not None
+        ):
             gastou = self.ouro_anterior - leitura.ouro
             textos = leitura.textos_crus["loja"]
             # um roll troca todas as cartas; compra esvazia só a carta comprada
-            mudaram = sum(1 for antes, agora in zip(self.loja_anterior, leitura.loja) if antes != agora)
+            mudaram = sum(
+                1
+                for antes, agora in zip(self.loja_anterior, leitura.loja)
+                if antes != agora
+            )
             if gastou > 0 and mudaram <= 2:
-                for posicao, (antes, texto_agora) in enumerate(zip(self.loja_anterior, textos)):
+                for posicao, (antes, texto_agora) in enumerate(
+                    zip(self.loja_anterior, textos)
+                ):
                     if antes is not None and texto_agora == "":
                         compras.append(Compra(antes, posicao))
 
@@ -55,7 +66,9 @@ def aplicar_compras(unidades, copias, compras):
     """Soma as cópias compradas e atualiza as estrelas. `unidades` e `copias` são dicts por id."""
     for compra in compras:
         id_campeao = compra.campeao.id
-        atual = copias.get(id_campeao) or COPIAS_POR_ESTRELA.get(unidades.get(id_campeao, 0), 0)
+        atual = copias.get(id_campeao) or COPIAS_POR_ESTRELA.get(
+            unidades.get(id_campeao, 0), 0
+        )
         copias[id_campeao] = atual + 1
         unidades[id_campeao] = estrelas_por_copias(copias[id_campeao])
 

@@ -4,8 +4,12 @@ from interface.imagens import icone
 
 CORES_CUSTO = {1: "#9aa0a6", 2: "#1fa34a", 3: "#2f7ae5", 4: "#b14be0", 5: "#f0b429"}
 # selos dos traços: (fundo, texto) para bronze, prata, ouro e prismático
-CORES_ESTILO = {1: ("#8c5a3c", "#fff"), 2: ("#aebdca", "#17202a"), 3: ("#e8b941", "#2a1d00"),
-                4: ("linear-gradient(90deg,#f6a9d8,#a8c8ff,#b6f0c8)", "#1b1b2a")}
+CORES_ESTILO = {
+    1: ("#8c5a3c", "#fff"),
+    2: ("#aebdca", "#17202a"),
+    3: ("#e8b941", "#2a1d00"),
+    4: ("linear-gradient(90deg,#f6a9d8,#a8c8ff,#b6f0c8)", "#1b1b2a"),
+}
 
 CSS_GERAL = """
 <style>
@@ -116,5 +120,7 @@ def css_dos_botoes(catalogo):
         )
     for componente in catalogo.componentes():
         seletor = f'[class*="st-key-componente_{componente.id}_"] button'
-        regras.append(f"{seletor} {{ background-image: url({icone('item', componente.chave)}); }}")
+        regras.append(
+            f"{seletor} {{ background-image: url({icone('item', componente.chave)}); }}"
+        )
     return "<style>" + "\n".join(regras) + "</style>"

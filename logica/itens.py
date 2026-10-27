@@ -9,8 +9,8 @@ TIPOS_DE_ITEM_UTEIS = {"Completo", "Emblema"}
 @dataclass
 class ItemParaCampeao:
     item: object
-    status: str           # "Pode montar", "Falta 1 componente" ou "Faltam 2 componentes"
-    faltando: list        # componentes que faltam
+    status: str  # "Pode montar", "Falta 1 componente" ou "Faltam 2 componentes"
+    faltando: list  # componentes que faltam
 
 
 def tem_componentes(componentes, receita):
@@ -21,8 +21,10 @@ def tem_componentes(componentes, receita):
 def itens_que_pode_montar(componentes, catalogo):
     """Todos os itens que dá para montar agora (cada um isoladamente)."""
     possiveis = [
-        item for item in catalogo.receitas()
-        if item.tipo in TIPOS_DE_ITEM_UTEIS and tem_componentes(componentes, item.componentes)
+        item
+        for item in catalogo.receitas()
+        if item.tipo in TIPOS_DE_ITEM_UTEIS
+        and tem_componentes(componentes, item.componentes)
     ]
     return sorted(possiveis, key=lambda item: (item.tipo, item.nome))
 
@@ -50,8 +52,14 @@ def itens_para_campeao(campeao, componentes, catalogo):
         item = catalogo.itens.get(id_item)
         if not item or len(item.componentes) != 2:
             continue
-        faltando = [catalogo.itens[c] for c in _usar_componentes(sobra, item.componentes) if c in catalogo.itens]
-        status = {0: "Pode montar", 1: "Falta 1 componente"}.get(len(faltando), "Faltam 2 componentes")
+        faltando = [
+            catalogo.itens[c]
+            for c in _usar_componentes(sobra, item.componentes)
+            if c in catalogo.itens
+        ]
+        status = {0: "Pode montar", 1: "Falta 1 componente"}.get(
+            len(faltando), "Faltam 2 componentes"
+        )
         resultado.append(ItemParaCampeao(item, status, faltando))
     return resultado
 
@@ -61,4 +69,6 @@ def carregadores(comp, quantidade=2):
 
     Quem mais segura 3 itens nas partidas de alto elo (taxa_de_itens); sem dados, os mais caros.
     """
-    return sorted(comp.campeoes, key=lambda c: (-c.taxa_de_itens, -c.custo, c.nome))[:quantidade]
+    return sorted(comp.campeoes, key=lambda c: (-c.taxa_de_itens, -c.custo, c.nome))[
+        :quantidade
+    ]
