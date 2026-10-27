@@ -5,5 +5,5 @@ pillow>=12.3
 numpy>=2.5
 opencv-python>=5.0
 mss>=10.2
-winocr>=0.0.15
+winocr>=0.0.15; sys_platform == "win32"
 pytest>=8.0.0
